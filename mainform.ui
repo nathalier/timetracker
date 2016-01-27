@@ -28,7 +28,7 @@
     </property>
     <layout class="QGridLayout" name="mainLayout">
      <item row="0" column="1" colspan="2">
-      <widget class="QComboBox" name="currentTask_cb">
+      <widget class="QComboBox" name="task_combo">
        <property name="minimumSize">
         <size>
          <width>0</width>
@@ -41,6 +41,11 @@
       <layout class="QHBoxLayout" name="horizontalLayout_2">
        <item>
         <widget class="QLabel" name="runningForText">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>Running for:</string>
          </property>
@@ -48,17 +53,22 @@
           <number>0</number>
          </property>
          <property name="indent">
-          <number>10</number>
+          <number>5</number>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="timeFromStart_lb">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>0 m</string>
          </property>
          <property name="indent">
-          <number>10</number>
+          <number>5</number>
          </property>
         </widget>
        </item>
@@ -67,17 +77,22 @@
      <item row="1" column="1" colspan="2">
       <layout class="QHBoxLayout" name="horizontalLayout">
        <item>
-        <widget class="QComboBox" name="Period_cb">
+        <widget class="QComboBox" name="tp_combo">
          <property name="minimumSize">
           <size>
            <width>180</width>
-           <height>0</height>
+           <height>25</height>
           </size>
          </property>
         </widget>
        </item>
        <item>
         <widget class="QLabel" name="totalForPeriod_lb">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
          <property name="text">
           <string>0 m</string>
          </property>
