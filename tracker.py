@@ -2,7 +2,7 @@ __author__ = 'Nathalie'
 
 import sys
 from PyQt4 import QtCore, QtGui
-from time import time
+from time import time, strftime, gmtime
 
 from dbconnector import *
 from mainform import Ui_MainWindow
@@ -11,13 +11,16 @@ from mainform import Ui_MainWindow
 TP_TODAY = 'Today'
 TP_YESTERDAY = 'Yesterday'
 TP_THIS_WEEK = 'This Week'
-TP_LAST_WEEK = 'Last Week'
 TP_THIS_MONTH = 'This Month'
-TP_LAST_MONTH = 'Last Month'
-TP_LIST = [TP_TODAY, TP_YESTERDAY, TP_THIS_WEEK, TP_LAST_WEEK, TP_THIS_MONTH, TP_LAST_MONTH]
+TP_LIST = [TP_TODAY, TP_YESTERDAY, TP_THIS_WEEK, TP_THIS_MONTH]
 TP_DEF = TP_TODAY
 LABEL_START = "Start"
-LABEL_STOP = "Pause"
+LABEL_STOP = "Stop"
+TU_SECOND = 1
+TU_MINUTE = 60 * TU_SECOND
+TU_5MIN = 5 * TU_MINUTE
+TU_HOUR = 60 * TU_MINUTE
+TIMER_TIMEOUT = TU_SECOND
 
 
 class TtForm(QtGui.QMainWindow):
@@ -27,33 +30,63 @@ class TtForm(QtGui.QMainWindow):
         self.ui.setupUi(self)
         self.task_started = False
         self.timer_start = 0
-        self.time_spent = 0
-        self.ui.startStop_btn.clicked.connect(self.start_btn_clicked)
-
+        self.time_current = 0
+        self.current_task = (None, None)   # tuple of two values: [0] - task_id, [1] - task_name
+        # TODO init DB
         self.task_combo_init()
         self.tp_combo_init()
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.tick)
+        self.ui.startStop_btn.clicked.connect(self.start_btn_clicked)
+        self.ui.task_combo.currentIndexChanged.connect(self.new_task_selected)
 
-        # QtCore.QObject.connect(self.ui.startStop_btn, QtCore.SIGNAL("clicked()"), self.start_or_stop)
-        # QtCore.CObject.connect(self.ui.currentTask_cb, QtCore.SIGNAL(""))
+    def tick(self):
+        self.time_current += TIMER_TIMEOUT
+        self.ui.timeFromStart_lb.setText(self.time_to_str(self.time_current, TIMER_TIMEOUT))
 
     def start_btn_clicked(self):
-        self.task_started = not self.task_started
-        if self.task_started:
-            new_btn_title = LABEL_STOP
-            self.timer_start = time()
-            self.time_spent = 0
+        if not self.task_started:
+            self.start_tracking()
         else:
-            new_btn_title = LABEL_START
-            self.time_spent = time() - self.timer_start
-            self.timer_start = 0
-            self.ui.timeFromStart_lb.setText(str(int(self.time_spent)) + ' s')
-        self.ui.startStop_btn.setText(new_btn_title)
+            self.stop_tracking()
 
-        return
+    def start_tracking(self):
+        self.timer_start = time()
+        self.timer.start(1000 * TIMER_TIMEOUT)
+        self.task_started = True
+        self.ui.startStop_btn.setText(LABEL_STOP)
+
+    def stop_tracking(self):
+        log_time(self.current_task[0], int(self.timer_start), int(time()))
+        self.timer.stop()
+        self.time_current = 0
+        self.task_started = False
+        self.ui.startStop_btn.setText(LABEL_START)
+        self.update_time_for_period()
+
+    def update_time_for_period(self):
+        # TODO period definition
+        total_time = select_time(self.current_task[0], TP_TODAY)
+        self.ui.totalForPeriod_lb.setText(self.time_to_str(total_time, TU_SECOND))
+        self.ui.timeFromStart_lb.setText('0m')
+
+    def new_task_selected(self):
+        if self.task_started:
+            self.stop_tracking()
+        self.current_task = self.find_task_by_text(self.ui.task_combo.currentText())
+        self.update_time_for_period()
+
+    def find_task_by_text(self, task_name):
+        for task in self.all_tasks:
+            if task[1] == task_name:
+                return task
 
     def task_combo_init(self):
-        tasks = retrieve_tasks()
-        self.ui.task_combo.addItems(tasks)
+        self.all_tasks = retrieve_tasks()
+        for task in self.all_tasks:
+            self.ui.task_combo.addItem(task[1])
+        self.ui.task_combo.setCurrentIndex(0)  #TODO Set Last used task
+        self.current_task = self.all_tasks[0]
         self.ui.task_combo.setAutoCompletion(True)
         self.ui.task_combo.setEditable(False)
 
@@ -65,8 +98,18 @@ class TtForm(QtGui.QMainWindow):
         self.ui.tp_combo.setAutoCompletion(True)
         self.ui.tp_combo.setEditable(False)
 
-    def start_or_stop(self):
-        pass
+
+    def time_to_str(self, time_amount, rounding_unit=TU_5MIN):
+        result = ''
+        time_rounded = round(time_amount / rounding_unit) * rounding_unit
+        h, m = divmod(time_rounded, TU_HOUR)
+        m, s = divmod(m, TU_MINUTE)
+        if h > 0: result += str(h) + 'h '
+        result += str(m) + 'm '
+        if s > 0: result += str(s) + 's'
+        return result
+
+
 
 
 
