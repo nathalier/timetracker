@@ -31,11 +31,13 @@ class TtForm(QtGui.QMainWindow):
         self.task_started = False
         self.timer_start = 0
         self.time_current = 0
-        self.current_task = (None, None)   # tuple of two values: [0] - task_id, [1] - task_name
-        # TODO init DB
+        self.current_task_id = -1   # tuple of two values: [0] - task_id, [1] - task_name
+        prepare_db()
+        self.all_tasks, self.saved_states = init_db()
         self.task_combo_init()
         self.tp_combo_init()
         self.timer = QtCore.QTimer()
+
         self.timer.timeout.connect(self.tick)
         self.ui.startStop_btn.clicked.connect(self.start_btn_clicked)
         self.ui.task_combo.currentIndexChanged.connect(self.new_task_selected)
@@ -57,7 +59,7 @@ class TtForm(QtGui.QMainWindow):
         self.ui.startStop_btn.setText(LABEL_STOP)
 
     def stop_tracking(self):
-        log_time(self.current_task[0], int(self.timer_start), int(time()))
+        log_time(self.current_task_id, int(self.timer_start), int(time()))
         self.timer.stop()
         self.time_current = 0
         self.task_started = False
@@ -66,27 +68,43 @@ class TtForm(QtGui.QMainWindow):
 
     def update_time_for_period(self):
         # TODO period definition
-        total_time = select_time(self.current_task[0], TP_TODAY)
-        self.ui.totalForPeriod_lb.setText(self.time_to_str(total_time, TU_SECOND))
+        if self.current_task_id > 0:
+            total_time = select_time(self.current_task_id, TP_TODAY)
+            total_time_lb = self.time_to_str(total_time, TU_SECOND)
+        else:
+            total_time_lb = '0m'
+        self.ui.totalForPeriod_lb.setText(total_time_lb)
         self.ui.timeFromStart_lb.setText('0m')
 
     def new_task_selected(self):
         if self.task_started:
             self.stop_tracking()
-        self.current_task = self.find_task_by_text(self.ui.task_combo.currentText())
+        self.proceed_selected_task()
+
+    def proceed_selected_task(self):
+        t_name = self.ui.task_combo.currentText()
+        if len(t_name) == 0:
+            self.current_task_id = -1
+        else:
+            self.current_task_id = self.find_task_id_by_name(t_name)
         self.update_time_for_period()
 
-    def find_task_by_text(self, task_name):
-        for task in self.all_tasks:
-            if task[1] == task_name:
-                return task
+    def find_task_id_by_name(self, task_name):
+        for id, t_name in self.all_tasks.items():
+            if t_name == task_name:
+                return id
 
     def task_combo_init(self):
-        self.all_tasks = retrieve_tasks()
-        for task in self.all_tasks:
-            self.ui.task_combo.addItem(task[1])
-        self.ui.task_combo.setCurrentIndex(0)  #TODO Set Last used task
-        self.current_task = self.all_tasks[0]
+        for id, t_name in self.all_tasks.items():
+            self.ui.task_combo.addItem(t_name)
+        try:
+        # if 'last_task_id' in self.saved_states and int(self.saved_states['last_task_id']) in self.all_tasks:
+            t_id = int(self.saved_states['last_task_id'])
+            combo_ind = self.ui.task_combo.findText(self.all_tasks[t_id])
+        except:
+            combo_ind = 0
+        self.ui.task_combo.setCurrentIndex(combo_ind)
+        self.proceed_selected_task()
         self.ui.task_combo.setAutoCompletion(True)
         self.ui.task_combo.setEditable(False)
 
@@ -97,6 +115,12 @@ class TtForm(QtGui.QMainWindow):
             self.ui.tp_combo.setCurrentIndex(ind)
         self.ui.tp_combo.setAutoCompletion(True)
         self.ui.tp_combo.setEditable(False)
+
+    def closeEvent(self, event):
+        if self.task_started:
+            self.stop_tracking()
+        save_cur_state([('last_task_id', str(self.current_task_id))])
+        event.accept()
 
 
     def time_to_str(self, time_amount, rounding_unit=TU_5MIN):
