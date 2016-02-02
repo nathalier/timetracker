@@ -91,7 +91,7 @@
         <widget class="QComboBox" name="tp_combo">
          <property name="minimumSize">
           <size>
-           <width>130</width>
+           <width>150</width>
            <height>30</height>
           </size>
          </property>
@@ -235,6 +235,9 @@
     <addaction name="actionAdd"/>
     <addaction name="actionDelete"/>
     <addaction name="actionModify"/>
+    <addaction name="separator"/>
+    <addaction name="actionLog_Time"/>
+    <addaction name="actionAdd_Memo"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
@@ -278,6 +281,16 @@
   <action name="actionTask">
    <property name="text">
     <string>Task</string>
+   </property>
+  </action>
+  <action name="actionLog_Time">
+   <property name="text">
+    <string>Log Time</string>
+   </property>
+  </action>
+  <action name="actionAdd_Memo">
+   <property name="text">
+    <string>Add Memo</string>
    </property>
   </action>
  </widget>
