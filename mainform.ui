@@ -100,6 +100,9 @@
            <pointsize>10</pointsize>
           </font>
          </property>
+         <property name="toolTipDuration">
+          <number>-1</number>
+         </property>
         </widget>
        </item>
        <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
@@ -295,8 +298,11 @@
    </property>
   </action>
   <action name="actionLayer">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="text">
-    <string>Layer</string>
+    <string>Always on Top</string>
    </property>
   </action>
   <action name="actionOpacity">

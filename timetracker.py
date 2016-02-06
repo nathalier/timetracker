@@ -32,12 +32,13 @@ class TtForm(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
         self.ui = Ui_MainWindow()
-        # self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.ui.setupUi(self)
+        self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+        self.ui.actionLayer.setChecked(True)
         self.task_started = False
         self.timer_start = 0
         self.time_current = 0
-        self.cur_task_id = -1   
+        self.cur_task_id = -1
         self.cur_period = TP_DEF
         self.cur_dialog = None
         prepare_db()
@@ -52,6 +53,7 @@ class TtForm(QtWidgets.QMainWindow):
         self.ui.tp_combo.currentIndexChanged.connect(self.new_period_selected)
 
         self.ui.actionAddTask.triggered.connect(partial(self.open_dialog, 'AddTaskDialog'))
+        self.ui.actionLayer.triggered.connect(self.toggle_ontop)
 
 
     def tick(self):
@@ -210,6 +212,14 @@ class TtForm(QtWidgets.QMainWindow):
         self.cur_dialog.dialog_closed_s.disconnect(self.dialog_closed)
         self.cur_dialog = None
         self.ui.menubar.setEnabled(True)
+
+    def toggle_ontop(self):
+        # self.setWindowFlags(self.windowFlags())
+        if self.ui.actionLayer.isChecked():
+            self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
+        else:
+            self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
+        self.show()
 
 
 class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
