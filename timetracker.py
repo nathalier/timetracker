@@ -123,7 +123,7 @@ class TtForm(QtWidgets.QMainWindow):
     
     def task_combo_init(self, cur_task_id=-1):
         self.all_tasks = retrieve_tasks()
-        for id, t_name in self.all_tasks.items():
+        for t_name in sorted(self.all_tasks.values(), key=lambda t: t.lower()):
             self.ui.task_combo.addItem(t_name)
         try:
             if cur_task_id < 0:
