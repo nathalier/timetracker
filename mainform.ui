@@ -91,7 +91,7 @@
         <widget class="QComboBox" name="tp_combo">
          <property name="minimumSize">
           <size>
-           <width>150</width>
+           <width>100</width>
            <height>30</height>
           </size>
          </property>
@@ -222,27 +222,28 @@
     <property name="title">
      <string>Report</string>
     </property>
-    <addaction name="actionDay"/>
-    <addaction name="actionWeek"/>
-    <addaction name="actionMonth"/>
-    <addaction name="separator"/>
-    <addaction name="actionTask"/>
+    <addaction name="actionTaskReport"/>
+    <addaction name="actionPeriodReport"/>
    </widget>
    <widget class="QMenu" name="menuTasks">
     <property name="title">
      <string>Tasks</string>
     </property>
-    <addaction name="actionAdd"/>
-    <addaction name="actionDelete"/>
-    <addaction name="actionModify"/>
+    <addaction name="actionAddTask"/>
+    <addaction name="actionDeleteTask"/>
+    <addaction name="actionModifyTask"/>
     <addaction name="separator"/>
     <addaction name="actionLog_Time"/>
+    <addaction name="actionEdit_Time"/>
+    <addaction name="separator"/>
     <addaction name="actionAdd_Memo"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
      <string>Settings</string>
     </property>
+    <addaction name="actionLayer"/>
+    <addaction name="actionOpacity"/>
    </widget>
    <addaction name="menuTasks"/>
    <addaction name="menuReport"/>
@@ -263,24 +264,24 @@
     <string>Month</string>
    </property>
   </action>
-  <action name="actionAdd">
+  <action name="actionAddTask">
    <property name="text">
     <string>Add</string>
    </property>
   </action>
-  <action name="actionDelete">
+  <action name="actionDeleteTask">
    <property name="text">
     <string>Delete</string>
    </property>
   </action>
-  <action name="actionModify">
+  <action name="actionModifyTask">
    <property name="text">
     <string>Modify</string>
    </property>
   </action>
-  <action name="actionTask">
+  <action name="actionTaskReport">
    <property name="text">
-    <string>Task</string>
+    <string>For Task</string>
    </property>
   </action>
   <action name="actionLog_Time">
@@ -291,6 +292,26 @@
   <action name="actionAdd_Memo">
    <property name="text">
     <string>Add Memo</string>
+   </property>
+  </action>
+  <action name="actionLayer">
+   <property name="text">
+    <string>Layer</string>
+   </property>
+  </action>
+  <action name="actionOpacity">
+   <property name="text">
+    <string>Opacity</string>
+   </property>
+  </action>
+  <action name="actionPeriodReport">
+   <property name="text">
+    <string>For Period</string>
+   </property>
+  </action>
+  <action name="actionEdit_Time">
+   <property name="text">
+    <string>Edit Time</string>
    </property>
   </action>
  </widget>

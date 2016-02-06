@@ -4,9 +4,11 @@ import sys
 from PyQt5 import QtCore, QtWidgets
 from datetime import datetime, date, timedelta
 from time import time
+from functools import  partial
 
 from dbconnector import *
 from mainform import Ui_MainWindow
+from modif_task import Ui_TaskDialog
 
 
 TP_TODAY = 'Today'
@@ -30,14 +32,16 @@ class TtForm(QtWidgets.QMainWindow):
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self, parent)
         self.ui = Ui_MainWindow()
+        # self.setWindowFlags(QtCore.Qt.WindowStaysOnTopHint)
         self.ui.setupUi(self)
         self.task_started = False
         self.timer_start = 0
         self.time_current = 0
         self.cur_task_id = -1   
         self.cur_period = TP_DEF
+        self.cur_dialog = None
         prepare_db()
-        self.all_tasks, self.saved_states = init_db()
+        self.saved_states = retrieve_saved_state()
         self.task_combo_init()
         self.tp_combo_init()
         self.timer = QtCore.QTimer()
@@ -46,6 +50,9 @@ class TtForm(QtWidgets.QMainWindow):
         self.ui.startStop_btn.clicked.connect(self.start_btn_clicked)
         self.ui.task_combo.currentIndexChanged.connect(self.new_task_selected)
         self.ui.tp_combo.currentIndexChanged.connect(self.new_period_selected)
+
+        self.ui.actionAddTask.triggered.connect(partial(self.open_dialog, 'AddTaskDialog'))
+
 
     def tick(self):
         self.time_current += TIMER_TIMEOUT
@@ -107,12 +114,20 @@ class TtForm(QtWidgets.QMainWindow):
             if t_name == task_name:
                 return id
 
-    def task_combo_init(self):
+    def update_task_combo(self):
+        last_task = self.cur_task_id
+        self.ui.task_combo.clear()
+        self.task_combo_init(last_task)
+    
+    def task_combo_init(self, cur_task_id=-1):
+        self.all_tasks = retrieve_tasks()
         for id, t_name in self.all_tasks.items():
             self.ui.task_combo.addItem(t_name)
         try:
-        # if 'last_task_id' in self.saved_states and int(self.saved_states['last_task_id']) in self.all_tasks:
-            t_id = int(self.saved_states['last_task_id'])
+            if cur_task_id < 0:
+                t_id = int(self.saved_states['last_task_id'])
+            else:
+                t_id = cur_task_id
             combo_ind = self.ui.task_combo.findText(self.all_tasks[t_id])
         except:
             combo_ind = 0
@@ -138,6 +153,7 @@ class TtForm(QtWidgets.QMainWindow):
         if self.task_started:
             self.stop_tracking()
         save_cur_state([('last_task_id', str(self.cur_task_id))])
+        self.cur_dialog.close()
         event.accept()
 
     def named_period_to_gmtime(self, period):
@@ -169,8 +185,6 @@ class TtForm(QtWidgets.QMainWindow):
             start_t, end_t = 0, 0
         return (start_t, end_t)
 
-
-
     def time_to_str(self, time_amount, rounding_unit=TU_5MIN):
         result = ''
         time_rounded = round(time_amount / rounding_unit) * rounding_unit
@@ -181,9 +195,51 @@ class TtForm(QtWidgets.QMainWindow):
         if s > 0: result += str(s) + 's'
         return result
 
+    def open_dialog(self, dial_name):
+        constructor = globals()[dial_name]
+        dialog = constructor()
+        self.cur_dialog = dialog
+        self.ui.menubar.setEnabled(False)
+        self.cur_dialog.task_added_s.connect(self.update_task_combo)
+        self.cur_dialog.dialog_closed_s.connect(self.dialog_closed)
+        dialog.show()
+        dialog.exec()
+
+    def dialog_closed(self):
+        self.cur_dialog.task_added_s.disconnect(self.update_task_combo)
+        self.cur_dialog.dialog_closed_s.disconnect(self.dialog_closed)
+        self.cur_dialog = None
+        self.ui.menubar.setEnabled(True)
+
+
+class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
+    task_added_s = QtCore.pyqtSignal()
+    dialog_closed_s = QtCore.pyqtSignal()
+
+    def __init__(self):
+        super(AddTaskDialog, self).__init__()
+        self.setupUi(self)
+        self.setWindowTitle('Add New Task')
+        self.saveButton.setText('Add Task')
+        self.taskNameEdit.setText('')
+        self.saveButton.clicked.connect(self.add_btn_clicked)
+        # self.ui.startStop_btn.clicked.connect(self.start_btn_clicked)
+
+    def add_btn_clicked(self):
+        if self.taskNameEdit.text().strip() != '':
+            if add_task(self.taskNameEdit.text()):
+                self.task_added_s.emit()
+                self.taskNameEdit.setText('')
+            else:
+                pass
+#             TODO show error
+
+    def closeEvent(self, QCloseEvent):
+        self.dialog_closed_s.emit()
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     myapp = TtForm()
     myapp.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())

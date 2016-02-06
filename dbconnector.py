@@ -47,9 +47,6 @@ def prepare_db():
         conn.close()
 
 
-def init_db():
-    return retrieve_tasks(), retrieve_saved_state()
-
 
 def retrieve_tasks():
     conn = sqlite3.connect(DB_NAME)
@@ -88,6 +85,10 @@ def log_time(task_id, start_t, stop_t, total_t, offline_l = 0):
                     (task_id, start_t, stop_t, total_t, offline_l))
     except sqlite3.IntegrityError:
         pass  # TODO show error message
+    except:
+        import sys
+        e = sys.exc_info()
+        print(e) # TODO sqlite3.OperationalError
     conn.close()
 
 
@@ -97,3 +98,20 @@ def select_time(task_id, start_t, end_t):
                 (task_id, start_t, end_t)).fetchall()
     res_list = [x[0] for x in res]
     return sum(res_list)
+
+
+def add_task(task_name, category_id=None, parent_task_id=None):
+    success = False
+    conn = sqlite3.connect('ttdb.sqlite')
+    try:
+        with conn:
+            conn.execute('''insert into task(task_name, category_id, parent_task_id)
+                       values (?, ?, ?);''',
+                    (task_name, category_id, parent_task_id))
+            success = True
+    except sqlite3.IntegrityError:
+        import sys
+        e = sys.exc_info()
+        print(e)  # TODO show error message
+    conn.close()
+    return success
