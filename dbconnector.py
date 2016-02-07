@@ -15,9 +15,9 @@ def prepare_db():
         conn.executescript('''
         CREATE TABLE task (
             id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-            task_name	TEXT UNIQUE,
-          /*  parent_task_id	INTEGER,
-            category_id	INTEGER */);
+            name TEXT NOT NULL UNIQUE,
+            parent_task_id	INTEGER,
+            category_id	INTEGER /*NOT NULL*/);
 
         CREATE TABLE time_log (
             task_id	INTEGER NOT NULL,
@@ -32,11 +32,11 @@ def prepare_db():
             var	TEXT UNIQUE,
             val	TEXT );
 
-      /*  CREATE TABLE category (
+        CREATE TABLE category (
             id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
-            cat_name	TEXT UNIQUE );
+            name	TEXT NOT NULL UNIQUE );
 
-        CREATE TABLE memo (
+        /*CREATE TABLE memo (
             id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
             memo	TEXT NOT NULL,
             time_log_id	INTEGER,
@@ -50,14 +50,42 @@ def prepare_db():
 
 def retrieve_tasks():
     conn = sqlite3.connect(DB_NAME)
-    res = conn.execute('''select id, task_name from task;''').fetchall()
+    res = conn.execute('''select t1.id, t1.name, t2.name, c.name
+                          from task t1
+                          left outer join task t2 on t1.parent_task_id = t2.id
+                          left outer join category c on c.id = t1.category_id;''').fetchall()
     conn.close()
-    return dict(res)
+    dict_res = compose_task_name(res)
+    return dict_res
+
+def compose_task_name(tasks):
+    res = {}
+    for task in tasks:
+        if task[2] is None or task[1] == task[2]: task_name = task[1]
+        else: task_name = task[2] + '@' + task[1]
+        cat_name = '' if task[3] is None else task[3]
+        res[cat_name + '::' + task_name] = task[0]
+    return res
 
 
 def retrieve_saved_state():
     conn = sqlite3.connect(DB_NAME)
     res = conn.execute('''select var, val from saved_state;''').fetchall()
+    conn.close()
+    return dict(res)
+
+
+def retrieve_categories():
+    conn = sqlite3.connect(DB_NAME)
+    res = conn.execute('''select name, id from category;''').fetchall()
+    conn.close()
+    return dict(res)
+
+
+def retrieve_super_tasks():
+    conn = sqlite3.connect(DB_NAME)
+    res = conn.execute('''select name, id from task
+                          where parent_task_id is Null;''').fetchall()
     conn.close()
     return dict(res)
 
@@ -100,12 +128,12 @@ def select_time(task_id, start_t, end_t):
     return sum(res_list)
 
 
-def add_task(task_name, category_id=None, parent_task_id=None):
+def add_task(task_name, parent_task_id=None, category_id=None):
     success = False
     conn = sqlite3.connect('ttdb.sqlite')
     try:
         with conn:
-            conn.execute('''insert into task(task_name, category_id, parent_task_id)
+            conn.execute('''insert into task(name, category_id, parent_task_id)
                        values (?, ?, ?);''',
                     (task_name, category_id, parent_task_id))
             success = True

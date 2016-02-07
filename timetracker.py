@@ -38,7 +38,7 @@ class TtForm(QtWidgets.QMainWindow):
         self.task_started = False
         self.timer_start = 0
         self.time_current = 0
-        self.cur_task_id = -1
+        self.cur_task, self.cur_task_id = '', -1
         self.cur_period = TP_DEF
         self.cur_dialog = None
         prepare_db()
@@ -106,34 +106,33 @@ class TtForm(QtWidgets.QMainWindow):
     def proceed_selected_task(self):
         t_name = self.ui.task_combo.currentText()
         if len(t_name) == 0:
-            self.cur_task_id = -1
+            self.cur_task, self.cur_task_id = '', -1
         else:
-            self.cur_task_id = self.find_task_id_by_name(t_name)
+            self.cur_task, self.cur_task_id = t_name, self.all_tasks[t_name]
         self.update_time_for_cur_period()
 
-    def find_task_id_by_name(self, task_name):
-        for id, t_name in self.all_tasks.items():
-            if t_name == task_name:
-                return id
+    def find_task_by_id(self, task_id):
+        for t_name, t_id in self.all_tasks.items():
+            if t_id == task_id:
+                return t_name
 
     def update_task_combo(self):
-        last_task = self.cur_task_id
+        last_task_id = self.cur_task_id
         self.ui.task_combo.clear()
-        self.task_combo_init(last_task)
+        self.task_combo_init(last_task_id)
     
     def task_combo_init(self, cur_task_id=-1):
         self.all_tasks = retrieve_tasks()
-        for t_name in sorted(self.all_tasks.values(), key=lambda t: t.lower()):
-            self.ui.task_combo.addItem(t_name)
+        self.ui.task_combo.addItems(sorted(self.all_tasks.keys(), key=lambda t: t.lower()))
         try:
             if cur_task_id < 0:
                 t_id = int(self.saved_states['last_task_id'])
             else:
                 t_id = cur_task_id
-            combo_ind = self.ui.task_combo.findText(self.all_tasks[t_id])
+            combo_text = self.find_task_by_id(t_id)
         except:
-            combo_ind = 0
-        self.ui.task_combo.setCurrentIndex(combo_ind)
+            combo_text = ''
+        self.ui.task_combo.setCurrentText(combo_text)
         self.proceed_selected_task()
         self.ui.task_combo.setEditable(False)
 
@@ -201,6 +200,9 @@ class TtForm(QtWidgets.QMainWindow):
         constructor = globals()[dial_name]
         dialog = constructor()
         self.cur_dialog = dialog
+        self.last_ontop_val = self.ui.actionLayer.isChecked()
+        if self.last_ontop_val:
+            self.toggle_ontop(False)
         self.ui.menubar.setEnabled(False)
         self.cur_dialog.task_added_s.connect(self.update_task_combo)
         self.cur_dialog.dialog_closed_s.connect(self.dialog_closed)
@@ -212,10 +214,11 @@ class TtForm(QtWidgets.QMainWindow):
         self.cur_dialog.dialog_closed_s.disconnect(self.dialog_closed)
         self.cur_dialog = None
         self.ui.menubar.setEnabled(True)
+        if self.last_ontop_val:
+            self.toggle_ontop(True)
 
-    def toggle_ontop(self):
-        # self.setWindowFlags(self.windowFlags())
-        if self.ui.actionLayer.isChecked():
+    def toggle_ontop(self, new_val=True):
+        if self.ui.actionLayer.isChecked() and new_val:
             self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         else:
             self.setWindowFlags(self.windowFlags() & ~QtCore.Qt.WindowStaysOnTopHint)
@@ -232,17 +235,41 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
         self.setWindowTitle('Add New Task')
         self.saveButton.setText('Add Task')
         self.taskNameEdit.setText('')
+        self.init_cat_combo()
+        self.init_parent_tasks()
         self.saveButton.clicked.connect(self.add_btn_clicked)
-        # self.ui.startStop_btn.clicked.connect(self.start_btn_clicked)
+        self.addcloseButton.clicked.connect(self.add_close_btn_clicked)
+
+    def init_cat_combo(self):
+        self.category_combo.addItem('')
+        self.categories = retrieve_categories()
+        self.category_combo.addItems(sorted(self.categories.keys(), key=lambda c: c.lower()))
+
+    def init_parent_tasks(self):
+        self.ptask_combo.addItem('')
+        self.super_tasks = retrieve_super_tasks()
+        self.ptask_combo.addItems(sorted(self.super_tasks.keys(), key=lambda c: c.lower()))
 
     def add_btn_clicked(self):
         if self.taskNameEdit.text().strip() != '':
-            if add_task(self.taskNameEdit.text()):
+            cur_ptask, cur_cat = self.ptask_combo.currentText(), self.category_combo.currentText()
+            ptask_id = self.super_tasks[cur_ptask] if len(cur_ptask) > 0 else None
+            cat_id = self.categories[cur_cat] if len(cur_cat) > 0 else None
+            if add_task(self.taskNameEdit.text(), ptask_id, cat_id):
+                self.ptask_combo.clear()
+                self.init_parent_tasks()
                 self.task_added_s.emit()
                 self.taskNameEdit.setText('')
             else:
                 pass
 #             TODO show error
+        else:
+            pass
+    #     TODO ask to enter task name
+
+    def add_close_btn_clicked(self):
+        self.add_btn_clicked()
+        self.close()
 
     def closeEvent(self, QCloseEvent):
         self.dialog_closed_s.emit()
