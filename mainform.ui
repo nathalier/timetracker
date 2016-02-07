@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>364</width>
+    <width>416</width>
     <height>102</height>
    </rect>
   </property>
@@ -22,8 +22,8 @@
      <rect>
       <x>0</x>
       <y>0</y>
-      <width>362</width>
-      <height>79</height>
+      <width>411</width>
+      <height>81</height>
      </rect>
     </property>
     <layout class="QGridLayout" name="mainLayout">
@@ -31,7 +31,7 @@
       <number>10</number>
      </property>
      <property name="verticalSpacing">
-      <number>15</number>
+      <number>5</number>
      </property>
      <item row="0" column="1" colspan="2" alignment="Qt::AlignVCenter">
       <widget class="QComboBox" name="task_combo">
@@ -50,36 +50,23 @@
      </item>
      <item row="1" column="3">
       <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
-        <widget class="QLabel" name="runningForText">
-         <property name="font">
-          <font>
-           <pointsize>10</pointsize>
-          </font>
+       <item>
+        <widget class="QLCDNumber" name="cur_time">
+         <property name="minimumSize">
+          <size>
+           <width>150</width>
+           <height>25</height>
+          </size>
          </property>
-         <property name="text">
-          <string>Now:</string>
-         </property>
-         <property name="margin">
-          <number>0</number>
-         </property>
-         <property name="indent">
-          <number>5</number>
-         </property>
-        </widget>
-       </item>
-       <item alignment="Qt::AlignHCenter|Qt::AlignVCenter">
-        <widget class="QLabel" name="timeFromStart_lb">
          <property name="font">
           <font>
            <pointsize>12</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
           </font>
          </property>
-         <property name="text">
-          <string>0m</string>
-         </property>
-         <property name="indent">
-          <number>5</number>
+         <property name="digitCount">
+          <number>8</number>
          </property>
         </widget>
        </item>
@@ -217,7 +204,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>364</width>
+     <width>416</width>
      <height>21</height>
     </rect>
    </property>

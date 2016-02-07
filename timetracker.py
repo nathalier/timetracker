@@ -4,7 +4,7 @@ import sys
 from PyQt5 import QtCore, QtWidgets
 from datetime import datetime, date, timedelta
 from time import time
-from functools import  partial
+from functools import partial
 
 from dbconnector import *
 from mainform import Ui_MainWindow
@@ -58,7 +58,8 @@ class TtForm(QtWidgets.QMainWindow):
 
     def tick(self):
         self.time_current += TIMER_TIMEOUT
-        self.ui.timeFromStart_lb.setText(self.time_to_str(self.time_current, TIMER_TIMEOUT))
+        # self.ui.timeFromStart_lb.setText(self.time_to_str(self.time_current, TIMER_TIMEOUT))
+        self.ui.cur_time.display(str(timedelta(seconds=self.time_current))) #self.time_current. toString('hh:mm:ss'))
 
     def start_btn_clicked(self):
         if not self.task_started:
@@ -94,9 +95,11 @@ class TtForm(QtWidgets.QMainWindow):
             total_time_lb = '0m'
         self.ui.totalForPeriod_lb.setText(total_time_lb)
         if self.task_started:
-            self.ui.timeFromStart_lb.setText(self.time_to_str(self.time_current, TIMER_TIMEOUT))
+            # self.ui.timeFromStart_lb.setText(self.time_to_str(self.time_current, TIMER_TIMEOUT))
+            self.ui.cur_time.display(str(timedelta(seconds=self.time_current)))
         else:
-            self.ui.timeFromStart_lb.setText('0m')
+            # self.ui.timeFromStart_lb.setText('0m')
+            self.ui.cur_time.display('0:00')
 
     def new_task_selected(self):
         if self.task_started:
