@@ -242,6 +242,8 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
         self.init_parent_tasks()
         self.saveButton.clicked.connect(self.add_btn_clicked)
         self.addcloseButton.clicked.connect(self.add_close_btn_clicked)
+        self.category_combo.currentIndexChanged.connect(self.filter_ptasks)
+        self.ptask_combo.currentIndexChanged.connect(self.set_category)
 
     def init_cat_combo(self):
         self.category_combo.addItem('')
@@ -250,13 +252,41 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
 
     def init_parent_tasks(self):
         self.ptask_combo.addItem('')
-        self.super_tasks = retrieve_super_tasks()
-        self.ptask_combo.addItems(sorted(self.super_tasks.keys(), key=lambda c: c.lower()))
+        self.ptasks_with_id, self.ptasks_with_cat = retrieve_super_tasks_with_cat()
+        self.ptask_combo.addItems(sorted(self.ptasks_with_id.keys(), key=lambda c: c.lower()))
+
+    def filter_ptasks(self):
+        last_task = self.ptask_combo.currentText()
+        if last_task == ['']: return
+        new_task_list = ['']
+        if self.category_combo.currentText() == '':
+            new_task_list.extend(sorted(self.ptasks_with_id.keys(), key=lambda c: c.lower()))
+        else:
+            filtered_tasks, cur_cat = [], self.category_combo.currentText()
+            for task, cat in self.ptasks_with_cat.items():
+                if cat == cur_cat:
+                    filtered_tasks.append(task)
+            new_task_list.extend(sorted(filtered_tasks, key=lambda c: c.lower()))
+        self.ptask_combo.currentIndexChanged.disconnect(self.set_category)
+        self.ptask_combo.clear()
+        self.ptask_combo.addItems(new_task_list)
+        cur_task = last_task if last_task in new_task_list else ''
+        self.ptask_combo.setCurrentText(cur_task)
+        self.ptask_combo.currentIndexChanged.connect(self.set_category)
+
+    def set_category(self):
+        ptask_new = self.ptask_combo.currentText()
+        last_cat = self.category_combo.currentText()
+        if ptask_new == '': return
+        if last_cat == '' or last_cat != self.ptasks_with_cat[ptask_new]:
+            self.category_combo.currentIndexChanged.disconnect(self.filter_ptasks)
+            self.category_combo.setCurrentText(self.ptasks_with_cat[ptask_new])
+            self.category_combo.currentIndexChanged.connect(self.filter_ptasks)
 
     def add_btn_clicked(self):
         if self.taskNameEdit.text().strip() != '':
             cur_ptask, cur_cat = self.ptask_combo.currentText(), self.category_combo.currentText()
-            ptask_id = self.super_tasks[cur_ptask] if len(cur_ptask) > 0 else None
+            ptask_id = self.ptasks_with_id[cur_ptask] if len(cur_ptask) > 0 else None
             cat_id = self.categories[cur_cat] if len(cur_cat) > 0 else None
             if add_task(self.taskNameEdit.text(), ptask_id, cat_id):
                 self.ptask_combo.clear()
