@@ -36,11 +36,11 @@ def prepare_db():
             id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
             name	TEXT NOT NULL UNIQUE );
 
-        /*CREATE TABLE memo (
+        CREATE TABLE memo (
             id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
             memo	TEXT NOT NULL,
             time_log_id	INTEGER,
-            task_id	INTEGER NOT NULL );*/
+            task_id	INTEGER NOT NULL );
 
         ''')
         conn.commit()

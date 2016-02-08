@@ -46,6 +46,9 @@
          <pointsize>10</pointsize>
         </font>
        </property>
+       <property name="toolTipDuration">
+        <number>-1</number>
+       </property>
       </widget>
      </item>
      <item row="1" column="3">
@@ -220,7 +223,6 @@
      <string>Tasks</string>
     </property>
     <addaction name="actionAddTask"/>
-    <addaction name="actionDeleteTask"/>
     <addaction name="actionModifyTask"/>
     <addaction name="separator"/>
     <addaction name="actionLog_Time"/>
@@ -234,10 +236,22 @@
     </property>
     <addaction name="actionLayer"/>
     <addaction name="actionOpacity"/>
+    <addaction name="separator"/>
+    <addaction name="actionPreferences"/>
+   </widget>
+   <widget class="QMenu" name="menuToDo">
+    <property name="title">
+     <string>ToDo</string>
+    </property>
+    <addaction name="actionAdd_ToDo"/>
+    <addaction name="separator"/>
+    <addaction name="actionImport"/>
+    <addaction name="actionExport"/>
    </widget>
    <addaction name="menuTasks"/>
    <addaction name="menuReport"/>
    <addaction name="menuSettings"/>
+   <addaction name="menuToDo"/>
   </widget>
   <action name="actionDay">
    <property name="text">
@@ -283,6 +297,9 @@
    <property name="text">
     <string>Add Memo</string>
    </property>
+   <property name="shortcut">
+    <string>Ctrl+M</string>
+   </property>
   </action>
   <action name="actionLayer">
    <property name="checkable">
@@ -305,6 +322,26 @@
   <action name="actionEdit_Time">
    <property name="text">
     <string>Edit Time</string>
+   </property>
+  </action>
+  <action name="actionAdd_ToDo">
+   <property name="text">
+    <string>Add ToDo</string>
+   </property>
+  </action>
+  <action name="actionImport">
+   <property name="text">
+    <string>Import...</string>
+   </property>
+  </action>
+  <action name="actionExport">
+   <property name="text">
+    <string>Export...</string>
+   </property>
+  </action>
+  <action name="actionPreferences">
+   <property name="text">
+    <string>Preferences...</string>
    </property>
   </action>
  </widget>

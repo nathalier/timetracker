@@ -25,7 +25,7 @@ TU_SECOND = 1
 TU_MINUTE = 60 * TU_SECOND
 TU_5MIN = 5 * TU_MINUTE
 TU_HOUR = 60 * TU_MINUTE
-TIMER_TIMEOUT = TU_SECOND
+TIMER_TIMEOUT = TU_SECOND * 200 #in ms
 
 
 class TtForm(QtWidgets.QMainWindow):
@@ -37,7 +37,6 @@ class TtForm(QtWidgets.QMainWindow):
         self.ui.actionLayer.setChecked(True)
         self.task_started = False
         self.timer_start = 0
-        self.time_current = 0
         self.cur_task, self.cur_task_id = '', -1
         self.cur_period = TP_DEF
         self.cur_dialog = None
@@ -57,9 +56,8 @@ class TtForm(QtWidgets.QMainWindow):
 
 
     def tick(self):
-        self.time_current += TIMER_TIMEOUT
-        # self.ui.timeFromStart_lb.setText(self.time_to_str(self.time_current, TIMER_TIMEOUT))
-        self.ui.cur_time.display(str(timedelta(seconds=self.time_current))) #self.time_current. toString('hh:mm:ss'))
+        delta = time() - self.timer_start
+        self.ui.cur_time.display(str(timedelta(seconds=round(delta))))
 
     def start_btn_clicked(self):
         if not self.task_started:
@@ -69,18 +67,16 @@ class TtForm(QtWidgets.QMainWindow):
 
     def start_tracking(self):
         self.timer_start = time()
-        self.timer.start(1000 * TIMER_TIMEOUT)
+        self.timer.start(TIMER_TIMEOUT)
         self.task_started = True
         self.ui.startStop_btn.setText(LABEL_STOP)
 
     def stop_tracking(self):
         time_spent = time() - self.timer_start
-        if abs(time_spent - self.time_current) > TIMER_TIMEOUT:
-            if time_spent < 0: time_spent = 0
+        if time_spent < 0: time_spent = 0
             # TODO show error, propose to correct time
         log_time(self.cur_task_id, self.timer_start, self.timer_start + time_spent, time_spent, offline_l=0)
         self.timer.stop()
-        self.time_current = 0
         self.task_started = False
         self.ui.startStop_btn.setText(LABEL_START)
         self.update_time_for_cur_period()
@@ -95,11 +91,9 @@ class TtForm(QtWidgets.QMainWindow):
             total_time_lb = '0m'
         self.ui.totalForPeriod_lb.setText(total_time_lb)
         if self.task_started:
-            # self.ui.timeFromStart_lb.setText(self.time_to_str(self.time_current, TIMER_TIMEOUT))
-            self.ui.cur_time.display(str(timedelta(seconds=self.time_current)))
+            self.ui.cur_time.display(str(timedelta(seconds=round(time() - self.timer_start))))
         else:
-            # self.ui.timeFromStart_lb.setText('0m')
-            self.ui.cur_time.display('0:00')
+            self.ui.cur_time.display('0:00:00')
 
     def new_task_selected(self):
         if self.task_started:
