@@ -125,7 +125,7 @@ class TtForm(QtWidgets.QMainWindow):
         self.task_combo_init(last_task_id)
     
     def task_combo_init(self, cur_task_id=-1):
-        self.all_tasks = retrieve_tasks()
+        self.all_tasks = get_tasks()
         self.ui.task_combo.addItems(sorted(self.all_tasks.keys(), key=lambda t: t.lower()))
         try:
             if cur_task_id < 0:
@@ -252,7 +252,7 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
 
     def init_parent_tasks(self):
         self.ptask_combo.addItem('')
-        self.ptasks_with_id, self.ptasks_with_cat = retrieve_super_tasks_with_cat()
+        self.ptasks_with_id, self.ptasks_with_cat = get_tasks_with_cat()
         self.ptask_combo.addItems(sorted(self.ptasks_with_id.keys(), key=lambda c: c.lower()))
 
     def filter_ptasks(self):

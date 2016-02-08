@@ -47,7 +47,6 @@ def prepare_db():
         conn.close()
 
 
-
 def retrieve_tasks():
     conn = sqlite3.connect(DB_NAME)
     res = conn.execute('''select t1.id, t1.name, t2.name, c.name
@@ -55,17 +54,46 @@ def retrieve_tasks():
                           left outer join task t2 on t1.parent_task_id = t2.id
                           left outer join category c on c.id = t1.category_id;''').fetchall()
     conn.close()
-    dict_res = compose_task_name(res)
-    return dict_res
+    return res
 
-def compose_task_name(tasks):
+
+def get_tasks():
+    tasks = retrieve_tasks()
+    fntasks = compose_task_name(tasks)
     res = {}
     for task in tasks:
-        if task[2] is None or task[1] == task[2]: task_name = task[1]
-        else: task_name = task[2] + '@' + task[1]
         cat_name = '' if task[3] is None else task[3]
-        res[cat_name + '::' + task_name] = task[0]
+        res[cat_name + '::' + fntasks[task[1]]] = task[0]
     return res
+
+
+def compose_task_name(tasks):
+    task_ptask = {}
+    full_task_names = {}
+    for task in tasks:
+        task_ptask[task[1]] = task[2]
+    for task in tasks:
+        if task[1] not in full_task_names:
+            full_task_names[task[1]] = task[1]
+            parent, parents = task[1], []
+            while parent is not None:
+                parents.append(parent)
+                parent = task_ptask[parent]
+            prefix = ''
+            for t in reversed(parents):
+                full_task_names[t] = prefix + t
+                prefix += t + '/'
+    return full_task_names
+
+
+def get_tasks_with_cat():
+    tasks = retrieve_tasks()
+    fntasks = compose_task_name(tasks)
+    d_fullname_id, d_fullname_cat = {}, {}
+    for task in tasks:
+        d_fullname_id[fntasks[task[1]]] = task[0]
+        d_fullname_cat[fntasks[task[1]]] = '' if task[3] is None else task[3]
+    return d_fullname_id, d_fullname_cat
 
 
 def retrieve_saved_state():
@@ -80,24 +108,6 @@ def retrieve_categories():
     res = conn.execute('''select name, id from category;''').fetchall()
     conn.close()
     return dict(res)
-
-
-def retrieve_super_tasks_with_cat():
-    conn = sqlite3.connect(DB_NAME)
-    res = conn.execute('''select t.name, t.id, c.name from task t
-                          left outer join category c on c.id = t.category_id
-                                         where  t.parent_task_id is Null;''').fetchall()
-    conn.close()
-    res_d1, res_d2 = super_tasks_with_cat_to_dict(res)
-    return res_d1, res_d2
-
-
-def super_tasks_with_cat_to_dict(res):
-    d1, d2 = {}, {}
-    for task in res:
-        d1[task[0]] = task[1]
-        d2[task[0]] = '' if task[2] is None else task[2]
-    return d1, d2
 
 
 def save_cur_state(vars):
