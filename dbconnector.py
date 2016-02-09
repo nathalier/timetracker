@@ -39,8 +39,8 @@ def prepare_db():
         CREATE TABLE memo (
             id	INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT UNIQUE,
             memo	TEXT NOT NULL,
-            time_log_id	INTEGER,
-            task_id	INTEGER NOT NULL );
+            time	REAL NOT NULL,
+            task_id	INTEGER );
 
         ''')
         conn.commit()
@@ -148,6 +148,12 @@ def select_time(task_id, start_t, end_t):
     return sum(res_list)
 
 
+def select_last_memo(task_id):
+    conn = sqlite3.connect('ttdb.sqlite')
+    res = conn.execute('''select memo, max(time) from memo where task_id = ?;''', (task_id, )).fetchone()
+    return res
+
+
 def add_task(task_name, parent_task_id=None, category_id=None):
     success = False
     conn = sqlite3.connect('ttdb.sqlite')
@@ -156,6 +162,23 @@ def add_task(task_name, parent_task_id=None, category_id=None):
             conn.execute('''insert into task(name, category_id, parent_task_id)
                        values (?, ?, ?);''',
                     (task_name, category_id, parent_task_id))
+            success = True
+    except sqlite3.IntegrityError:
+        import sys
+        e = sys.exc_info()
+        print(e)  # TODO show error message
+    conn.close()
+    return success
+
+
+def add_memo(memo_text, time, task_id=None):
+    success = False
+    conn = sqlite3.connect('ttdb.sqlite')
+    try:
+        with conn:
+            conn.execute('''insert into memo(memo, time, task_id)
+                       values (?, ?, ?);''',
+                    (memo_text, time, task_id))
             success = True
     except sqlite3.IntegrityError:
         import sys

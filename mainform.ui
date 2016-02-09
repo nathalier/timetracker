@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>416</width>
-    <height>102</height>
+    <height>126</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -201,6 +201,25 @@
      </item>
     </layout>
    </widget>
+   <widget class="QLabel" name="memo_text_lb">
+    <property name="geometry">
+     <rect>
+      <x>59</x>
+      <y>91</y>
+      <width>16</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>380</width>
+      <height>30</height>
+     </size>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -225,10 +244,10 @@
     <addaction name="actionAddTask"/>
     <addaction name="actionModifyTask"/>
     <addaction name="separator"/>
-    <addaction name="actionLog_Time"/>
-    <addaction name="actionEdit_Time"/>
+    <addaction name="actionLogTime"/>
+    <addaction name="actionEditTime"/>
     <addaction name="separator"/>
-    <addaction name="actionAdd_Memo"/>
+    <addaction name="actionAddMemo"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
@@ -243,7 +262,7 @@
     <property name="title">
      <string>ToDo</string>
     </property>
-    <addaction name="actionAdd_ToDo"/>
+    <addaction name="actionAddToDo"/>
     <addaction name="separator"/>
     <addaction name="actionImport"/>
     <addaction name="actionExport"/>
@@ -253,6 +272,7 @@
    <addaction name="menuSettings"/>
    <addaction name="menuToDo"/>
   </widget>
+  <widget class="QStatusBar" name="statusBar"/>
   <action name="actionDay">
    <property name="text">
     <string>Day</string>
@@ -280,7 +300,7 @@
   </action>
   <action name="actionModifyTask">
    <property name="text">
-    <string>Modify</string>
+    <string>Modify Task</string>
    </property>
   </action>
   <action name="actionTaskReport">
@@ -288,12 +308,12 @@
     <string>For Task</string>
    </property>
   </action>
-  <action name="actionLog_Time">
+  <action name="actionLogTime">
    <property name="text">
     <string>Log Time</string>
    </property>
   </action>
-  <action name="actionAdd_Memo">
+  <action name="actionAddMemo">
    <property name="text">
     <string>Add Memo</string>
    </property>
@@ -319,12 +339,12 @@
     <string>For Period</string>
    </property>
   </action>
-  <action name="actionEdit_Time">
+  <action name="actionEditTime">
    <property name="text">
     <string>Edit Time</string>
    </property>
   </action>
-  <action name="actionAdd_ToDo">
+  <action name="actionAddToDo">
    <property name="text">
     <string>Add ToDo</string>
    </property>

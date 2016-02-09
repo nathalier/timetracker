@@ -9,6 +9,7 @@ from functools import partial
 from dbconnector import *
 from mainform import Ui_MainWindow
 from modif_task import Ui_TaskDialog
+from add_memo import Ui_MemoDialog
 
 
 TP_TODAY = 'Today'
@@ -45,6 +46,9 @@ class TtForm(QtWidgets.QMainWindow):
         self.task_combo_init()
         self.tp_combo_init()
         self.timer = QtCore.QTimer()
+        self.statusBar = QtWidgets.QStatusBar()
+        self.setStatusBar(self.statusBar)
+        self.statusBar.addWidget(self.ui.memo_text_lb)
 
         self.timer.timeout.connect(self.tick)
         self.ui.startStop_btn.clicked.connect(self.start_btn_clicked)
@@ -52,6 +56,7 @@ class TtForm(QtWidgets.QMainWindow):
         self.ui.tp_combo.currentIndexChanged.connect(self.new_period_selected)
 
         self.ui.actionAddTask.triggered.connect(partial(self.open_dialog, 'AddTaskDialog'))
+        self.ui.actionAddMemo.triggered.connect(partial(self.open_dialog, 'MemoDialog'))
         self.ui.actionLayer.triggered.connect(self.toggle_ontop)
 
 
@@ -107,6 +112,7 @@ class TtForm(QtWidgets.QMainWindow):
         else:
             self.cur_task, self.cur_task_id = t_name, self.all_tasks[t_name]
         self.update_time_for_cur_period()
+        self.show_last_memo()
 
     def find_task_by_id(self, task_id):
         for t_name, t_id in self.all_tasks.items():
@@ -146,6 +152,14 @@ class TtForm(QtWidgets.QMainWindow):
             if new_period == period:
                 self.cur_period = period
         self.update_time_for_cur_period()
+
+    def show_last_memo(self):
+        if self.cur_task_id < 0: return
+        memo = select_last_memo(self.cur_task_id)
+        memo_to_show = '' if memo[0] is None \
+            else ('Last Memo (' + str(datetime.fromtimestamp(int(memo[1]))) + '): ' + memo[0])
+        self.ui.memo_text_lb.setText(memo_to_show)
+
 
     def closeEvent(self, event):
         if self.task_started:
@@ -194,20 +208,27 @@ class TtForm(QtWidgets.QMainWindow):
         return result
 
     def open_dialog(self, dial_name):
+        self.cur_dialog_name = dial_name
         constructor = globals()[dial_name]
-        dialog = constructor()
+        dialog = constructor(self.cur_task, self.all_tasks)
         self.cur_dialog = dialog
         self.last_ontop_val = self.ui.actionLayer.isChecked()
         if self.last_ontop_val:
             self.toggle_ontop(False)
         self.ui.menubar.setEnabled(False)
-        self.cur_dialog.task_added_s.connect(self.update_task_combo)
+        if dial_name == 'AddTaskDialog':
+            self.cur_dialog.task_added_s.connect(self.update_task_combo)
+        elif dial_name == 'MemoDialog':
+            self.cur_dialog.memo_added_s.connect(self.show_last_memo)
         self.cur_dialog.dialog_closed_s.connect(self.dialog_closed)
         dialog.show()
         dialog.exec()
 
     def dialog_closed(self):
-        self.cur_dialog.task_added_s.disconnect(self.update_task_combo)
+        if self.cur_dialog_name == 'AddTaskDialog':
+            self.cur_dialog.task_added_s.disconnect(self.update_task_combo)
+        elif self.cur_dialog_name == 'MemoDialog':
+            self.cur_dialog.memo_added_s.disconnect(self.show_last_memo)
         self.cur_dialog.dialog_closed_s.disconnect(self.dialog_closed)
         self.cur_dialog = None
         self.ui.menubar.setEnabled(True)
@@ -226,14 +247,14 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
     task_added_s = QtCore.pyqtSignal()
     dialog_closed_s = QtCore.pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, **params):
         super(AddTaskDialog, self).__init__()
         self.setupUi(self)
         self.setWindowTitle('Add New Task')
         self.saveButton.setText('Add Task')
         self.taskNameEdit.setText('')
         self.init_cat_combo()
-        self.init_parent_tasks()
+        self.init_tasks()
         self.saveButton.clicked.connect(self.add_btn_clicked)
         self.addcloseButton.clicked.connect(self.add_close_btn_clicked)
         self.category_combo.currentIndexChanged.connect(self.filter_ptasks)
@@ -244,7 +265,7 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
         self.categories = retrieve_categories()
         self.category_combo.addItems(sorted(self.categories.keys(), key=lambda c: c.lower()))
 
-    def init_parent_tasks(self):
+    def init_tasks(self):
         self.ptask_combo.addItem('')
         self.ptasks_with_id, self.ptasks_with_cat = get_tasks_with_cat()
         self.ptask_combo.addItems(sorted(self.ptasks_with_id.keys(), key=lambda c: c.lower()))
@@ -284,7 +305,7 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
             cat_id = self.categories[cur_cat] if len(cur_cat) > 0 else None
             if add_task(self.taskNameEdit.text(), ptask_id, cat_id):
                 self.ptask_combo.clear()
-                self.init_parent_tasks()
+                self.init_tasks()
                 self.task_added_s.emit()
                 self.taskNameEdit.setText('')
             else:
@@ -297,6 +318,45 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
     def add_close_btn_clicked(self):
         self.add_btn_clicked()
         self.close()
+
+    def closeEvent(self, QCloseEvent):
+        self.dialog_closed_s.emit()
+
+
+class MemoDialog(QtWidgets.QDialog, Ui_MemoDialog):
+    memo_added_s = QtCore.pyqtSignal()
+    dialog_closed_s = QtCore.pyqtSignal()
+
+    def __init__(self, cur_task, all_tasks):
+        super(MemoDialog, self).__init__()
+        self.setupUi(self)
+        self.cur_task, self.all_tasks = cur_task, all_tasks
+        self.memoEdit.setText('')
+        self.init_task_combo()
+        self.saveButton.clicked.connect(self.add_btn_clicked)
+        self.clearButton.clicked.connect(self.clear_btn_clicked)
+
+    def init_task_combo(self):
+        self.task_combo.addItem('')
+        self.task_combo.addItems(sorted(self.all_tasks.keys(), key=lambda t: t.lower()))
+        self.task_combo.setCurrentText(self.cur_task)
+
+    def add_btn_clicked(self):
+        if self.memoEdit.toPlainText().strip() != '':
+            t_name = self.task_combo.currentText()
+            t_id = None if t_name == '' else self.all_tasks[t_name]
+            if add_memo(self.memoEdit.toPlainText(), time(), t_id):
+                self.memo_added_s.emit()
+                self.close()
+            else:
+                pass
+#             TODO show error
+        else:
+            pass
+    #     TODO ask to enter memo
+
+    def clear_btn_clicked(self):
+        self.memoEdit.setText('')
 
     def closeEvent(self, QCloseEvent):
         self.dialog_closed_s.emit()
