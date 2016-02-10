@@ -34,6 +34,10 @@ class TtForm(QtWidgets.QMainWindow):
         QtWidgets.QWidget.__init__(self, parent)
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.statusBar = QtWidgets.QStatusBar()
+        self.setStatusBar(self.statusBar)
+        self.ui.memo_text_lb = QtWidgets.QLabel(self.ui.centralwidget, text='')
+        self.statusBar.addWidget(self.ui.memo_text_lb)
         self.setWindowFlags(self.windowFlags() | QtCore.Qt.WindowStaysOnTopHint)
         self.ui.actionLayer.setChecked(True)
         self.task_started = False
@@ -46,9 +50,6 @@ class TtForm(QtWidgets.QMainWindow):
         self.task_combo_init()
         self.tp_combo_init()
         self.timer = QtCore.QTimer()
-        self.statusBar = QtWidgets.QStatusBar()
-        self.setStatusBar(self.statusBar)
-        self.statusBar.addWidget(self.ui.memo_text_lb)
 
         self.timer.timeout.connect(self.tick)
         self.ui.startStop_btn.clicked.connect(self.start_btn_clicked)
@@ -57,6 +58,8 @@ class TtForm(QtWidgets.QMainWindow):
 
         self.ui.actionAddTask.triggered.connect(partial(self.open_dialog, 'AddTaskDialog'))
         self.ui.actionAddMemo.triggered.connect(partial(self.open_dialog, 'MemoDialog'))
+        self.ui.actionPeriodReport.triggered.connect(partial(self.open_dialog, 'ReportMainWindow', 1))
+        self.ui.actionTaskReport.triggered.connect(partial(self.open_dialog, 'ReportMainWindow', 2))
         self.ui.actionLayer.triggered.connect(self.toggle_ontop)
 
 
