@@ -1,3 +1,5 @@
+from PyQt5.QtWidgets import QTableWidgetItem
+
 __author__ = 'Nathalie'
 
 import sys
@@ -10,6 +12,7 @@ from dbconnector import *
 from mainform import Ui_MainWindow
 from modif_task import Ui_TaskDialog
 from add_memo import Ui_MemoDialog
+from time_report import Ui_ReportMainWindow
 
 
 TP_TODAY = 'Today'
@@ -20,13 +23,50 @@ TP_LAST_7 = 'Last 7 Days'
 TP_LAST_30 = 'Last 30 Days'
 TP_LIST = [TP_TODAY, TP_YESTERDAY, TP_THIS_WEEK, TP_LAST_7, TP_THIS_MONTH, TP_LAST_30]
 TP_DEF = TP_TODAY
-LABEL_START = "Start"
-LABEL_STOP = "Stop"
+LABEL_START, LABEL_STOP = "Start", "Stop"
 TU_SECOND = 1
 TU_MINUTE = 60 * TU_SECOND
 TU_5MIN = 5 * TU_MINUTE
 TU_HOUR = 60 * TU_MINUTE
 TIMER_TIMEOUT = TU_SECOND * 200 #in ms
+TIME_REPORT, TASK_REPORT = 1, 2
+NULL_CAT, NULL_TASK = '', ''
+REPORT_ALL_TP, REPORT_ALL_CAT, REPORT_ALL_TASK = 'Custom', 'All', 'All'
+
+
+def period_to_timestamp(period = TP_DEF):
+    if period == TP_TODAY:
+        start_t = datetime.combine(date.today(), datetime.min.time()).timestamp()
+        end_t = datetime.now().timestamp()
+    elif period == TP_YESTERDAY:
+        start_t = datetime.combine(date.today() - timedelta(days=1), datetime.min.time()).timestamp()
+        end_t = datetime.combine(date.today(), datetime.min.time()).timestamp()
+    elif period == TP_THIS_WEEK:
+        start_t = datetime.combine(date.today() - timedelta(days=date.today().weekday()), datetime.min.time()).timestamp()
+        end_t = datetime.now().timestamp()
+    elif period == TP_THIS_MONTH:
+        start_t = datetime.combine(date.today() - timedelta(days=date.today().day - 1), datetime.min.time()).timestamp()
+        end_t = datetime.now().timestamp()
+    elif period == TP_LAST_7:
+        start_t = datetime.combine(date.today() - timedelta(days=7), datetime.min.time()).timestamp()
+        end_t = datetime.now().timestamp()
+    elif period == TP_LAST_30:
+        start_t = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).timestamp()
+        end_t = datetime.now().timestamp()
+    else:
+        # TODO SHOW ERROR
+        start_t, end_t = 0, 0
+    return (start_t, end_t)
+
+def time_to_str(time_amount, rounding_unit=TU_5MIN):
+    result = ''
+    time_rounded = round(time_amount / rounding_unit) * rounding_unit
+    h, m = divmod(time_rounded, TU_HOUR)
+    m, s = divmod(m, TU_MINUTE)
+    if h > 0: result += str(h) + 'h '
+    result += str(m) + 'm '
+    if s > 0: result += str(s) + 's'
+    return result
 
 
 class TtForm(QtWidgets.QMainWindow):
@@ -42,7 +82,7 @@ class TtForm(QtWidgets.QMainWindow):
         self.ui.actionLayer.setChecked(True)
         self.task_started = False
         self.timer_start = 0
-        self.cur_task, self.cur_task_id = '', -1
+        self.cur_task, self.cur_task_id = NULL_TASK, -1
         self.cur_period = TP_DEF
         self.cur_dialog = None
         prepare_db()
@@ -58,8 +98,8 @@ class TtForm(QtWidgets.QMainWindow):
 
         self.ui.actionAddTask.triggered.connect(partial(self.open_dialog, 'AddTaskDialog'))
         self.ui.actionAddMemo.triggered.connect(partial(self.open_dialog, 'MemoDialog'))
-        self.ui.actionPeriodReport.triggered.connect(partial(self.open_dialog, 'ReportMainWindow', 1))
-        self.ui.actionTaskReport.triggered.connect(partial(self.open_dialog, 'ReportMainWindow', 2))
+        self.ui.actionPeriodReport.triggered.connect(partial(self.open_dialog, 'ReportMainWindow', TIME_REPORT))
+        self.ui.actionTaskReport.triggered.connect(partial(self.open_dialog, 'ReportMainWindow', TASK_REPORT))
         self.ui.actionLayer.triggered.connect(self.toggle_ontop)
 
 
@@ -92,9 +132,9 @@ class TtForm(QtWidgets.QMainWindow):
     def update_time_for_cur_period(self):
         # TODO period definition
         if self.cur_task_id > 0:
-            start_t, end_t = self.period_to_timestamp(self.cur_period)
+            start_t, end_t = period_to_timestamp(self.cur_period)
             total_time = select_time(self.cur_task_id, start_t, end_t)
-            total_time_lb = self.time_to_str(total_time, TU_SECOND)
+            total_time_lb = time_to_str(total_time, TU_SECOND)
         else:
             total_time_lb = '0m'
         self.ui.totalForPeriod_lb.setText(total_time_lb)
@@ -111,7 +151,7 @@ class TtForm(QtWidgets.QMainWindow):
     def proceed_selected_task(self):
         t_name = self.ui.task_combo.currentText()
         if len(t_name) == 0:
-            self.cur_task, self.cur_task_id = '', -1
+            self.cur_task, self.cur_task_id = NULL_TASK, -1
         else:
             self.cur_task, self.cur_task_id = t_name, self.all_tasks[t_name]
         self.update_time_for_cur_period()
@@ -137,17 +177,15 @@ class TtForm(QtWidgets.QMainWindow):
                 t_id = cur_task_id
             combo_text = self.find_task_by_id(t_id)
         except:
-            combo_text = ''
+            combo_text = NULL_TASK
         self.ui.task_combo.setCurrentText(combo_text)
         self.proceed_selected_task()
-        self.ui.task_combo.setEditable(False)
 
     def tp_combo_init(self):
         self.ui.tp_combo.addItems(TP_LIST)
         ind = self.ui.tp_combo.findText(self.cur_period)
         if ind >= 0:
             self.ui.tp_combo.setCurrentIndex(ind)
-        self.ui.tp_combo.setEditable(False)
 
     def new_period_selected(self):
         new_period = self.ui.tp_combo.currentText()
@@ -168,52 +206,14 @@ class TtForm(QtWidgets.QMainWindow):
         if self.task_started:
             self.stop_tracking()
         save_cur_state([('last_task_id', str(self.cur_task_id))])
-        self.cur_dialog.close()
+        # self.cur_dialog.close()
         event.accept()
 
-    def named_period_to_gmtime(self, period):
-        if period == TP_TODAY:
-            pass
-            # return ( , time())
 
-    def period_to_timestamp(self, period = TP_DEF):
-        if period == TP_TODAY:
-            start_t = datetime.combine(date.today(), datetime.min.time()).timestamp()
-            end_t = datetime.now().timestamp()
-        elif period == TP_YESTERDAY:
-            start_t = datetime.combine(date.today() - timedelta(days=1), datetime.min.time()).timestamp()
-            end_t = datetime.combine(date.today(), datetime.min.time()).timestamp()
-        elif period == TP_THIS_WEEK:
-            start_t = datetime.combine(date.today() - timedelta(days=date.today().weekday()), datetime.min.time()).timestamp()
-            end_t = datetime.now().timestamp()
-        elif period == TP_THIS_MONTH:
-            start_t = datetime.combine(date.today() - timedelta(days=date.today().day - 1), datetime.min.time()).timestamp()
-            end_t = datetime.now().timestamp()
-        elif period == TP_LAST_7:
-            start_t = datetime.combine(date.today() - timedelta(days=7), datetime.min.time()).timestamp()
-            end_t = datetime.now().timestamp()
-        elif period == TP_LAST_30:
-            start_t = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).timestamp()
-            end_t = datetime.now().timestamp()
-        else:
-            # TODO SHOW ERROR
-            start_t, end_t = 0, 0
-        return (start_t, end_t)
-
-    def time_to_str(self, time_amount, rounding_unit=TU_5MIN):
-        result = ''
-        time_rounded = round(time_amount / rounding_unit) * rounding_unit
-        h, m = divmod(time_rounded, TU_HOUR)
-        m, s = divmod(m, TU_MINUTE)
-        if h > 0: result += str(h) + 'h '
-        result += str(m) + 'm '
-        if s > 0: result += str(s) + 's'
-        return result
-
-    def open_dialog(self, dial_name):
+    def open_dialog(self, dial_name, dial_type):
         self.cur_dialog_name = dial_name
         constructor = globals()[dial_name]
-        dialog = constructor(self.cur_task, self.all_tasks)
+        dialog = constructor((self.cur_task, self.all_tasks))
         self.cur_dialog = dialog
         self.last_ontop_val = self.ui.actionLayer.isChecked()
         if self.last_ontop_val:
@@ -223,9 +223,19 @@ class TtForm(QtWidgets.QMainWindow):
             self.cur_dialog.task_added_s.connect(self.update_task_combo)
         elif dial_name == 'MemoDialog':
             self.cur_dialog.memo_added_s.connect(self.show_last_memo)
+        elif dial_name == 'ReportMainWindow':
+            dialog.cur_period = self.cur_period
+            dialog.tp_combo.setCurrentText(dialog.cur_period)
+            if dial_type == TASK_REPORT:
+                ddd = self.cur_task.find('::')
+                dialog.cur_cat = self.cur_task[:ddd]
+                dialog.cat_combo.setCurrentText(dialog.cur_cat)
+                dialog.cur_task = self.cur_task[ddd + 2:]
+                dialog.task_combo.setCurrentText(dialog.cur_task)
+            # dialog.searchButton.setEnabled(False)
         self.cur_dialog.dialog_closed_s.connect(self.dialog_closed)
         dialog.show()
-        dialog.exec()
+        # dialog.exec()
 
     def dialog_closed(self):
         if self.cur_dialog_name == 'AddTaskDialog':
@@ -250,12 +260,12 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
     task_added_s = QtCore.pyqtSignal()
     dialog_closed_s = QtCore.pyqtSignal()
 
-    def __init__(self, **params):
+    def __init__(self, *params):
         super(AddTaskDialog, self).__init__()
         self.setupUi(self)
         self.setWindowTitle('Add New Task')
         self.saveButton.setText('Add Task')
-        self.taskNameEdit.setText('')
+        self.taskNameEdit.setText(NULL_TASK)
         self.init_cat_combo()
         self.init_tasks()
         self.saveButton.clicked.connect(self.add_btn_clicked)
@@ -264,20 +274,20 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
         self.ptask_combo.currentIndexChanged.connect(self.set_category)
 
     def init_cat_combo(self):
-        self.category_combo.addItem('')
+        self.category_combo.addItem(NULL_CAT)
         self.categories = retrieve_categories()
         self.category_combo.addItems(sorted(self.categories.keys(), key=lambda c: c.lower()))
 
     def init_tasks(self):
-        self.ptask_combo.addItem('')
+        self.ptask_combo.addItem(NULL_TASK)
         self.ptasks_with_id, self.ptasks_with_cat = get_tasks_with_cat()
         self.ptask_combo.addItems(sorted(self.ptasks_with_id.keys(), key=lambda c: c.lower()))
 
     def filter_ptasks(self):
         last_task = self.ptask_combo.currentText()
-        if last_task == ['']: return
-        new_task_list = ['']
-        if self.category_combo.currentText() == '':
+        if last_task == [NULL_TASK]: return
+        new_task_list = [NULL_TASK]
+        if self.category_combo.currentText() == NULL_CAT:
             new_task_list.extend(sorted(self.ptasks_with_id.keys(), key=lambda c: c.lower()))
         else:
             filtered_tasks, cur_cat = [], self.category_combo.currentText()
@@ -288,15 +298,15 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
         self.ptask_combo.currentIndexChanged.disconnect(self.set_category)
         self.ptask_combo.clear()
         self.ptask_combo.addItems(new_task_list)
-        cur_task = last_task if last_task in new_task_list else ''
+        cur_task = last_task if last_task in new_task_list else NULL_CAT
         self.ptask_combo.setCurrentText(cur_task)
         self.ptask_combo.currentIndexChanged.connect(self.set_category)
 
     def set_category(self):
         ptask_new = self.ptask_combo.currentText()
         last_cat = self.category_combo.currentText()
-        if ptask_new == '': return
-        if last_cat == '' or last_cat != self.ptasks_with_cat[ptask_new]:
+        if ptask_new == NULL_TASK: return
+        if last_cat == NULL_CAT or last_cat != self.ptasks_with_cat[ptask_new]:
             self.category_combo.currentIndexChanged.disconnect(self.filter_ptasks)
             self.category_combo.setCurrentText(self.ptasks_with_cat[ptask_new])
             self.category_combo.currentIndexChanged.connect(self.filter_ptasks)
@@ -310,7 +320,7 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
                 self.ptask_combo.clear()
                 self.init_tasks()
                 self.task_added_s.emit()
-                self.taskNameEdit.setText('')
+                self.taskNameEdit.setText(NULL_TASK)
             else:
                 pass
 #             TODO show error
@@ -330,24 +340,24 @@ class MemoDialog(QtWidgets.QDialog, Ui_MemoDialog):
     memo_added_s = QtCore.pyqtSignal()
     dialog_closed_s = QtCore.pyqtSignal()
 
-    def __init__(self, cur_task, all_tasks):
+    def __init__(self,  tasks): # cur_task, all_tasks):
         super(MemoDialog, self).__init__()
         self.setupUi(self)
-        self.cur_task, self.all_tasks = cur_task, all_tasks
+        self.cur_task, self.all_tasks = tasks[0], tasks[1]
         self.memoEdit.setText('')
         self.init_task_combo()
         self.saveButton.clicked.connect(self.add_btn_clicked)
         self.clearButton.clicked.connect(self.clear_btn_clicked)
 
     def init_task_combo(self):
-        self.task_combo.addItem('')
+        self.task_combo.addItem(NULL_TASK)
         self.task_combo.addItems(sorted(self.all_tasks.keys(), key=lambda t: t.lower()))
         self.task_combo.setCurrentText(self.cur_task)
 
     def add_btn_clicked(self):
         if self.memoEdit.toPlainText().strip() != '':
             t_name = self.task_combo.currentText()
-            t_id = None if t_name == '' else self.all_tasks[t_name]
+            t_id = None if t_name == NULL_TASK else self.all_tasks[t_name]
             if add_memo(self.memoEdit.toPlainText(), time(), t_id):
                 self.memo_added_s.emit()
                 self.close()
@@ -363,6 +373,121 @@ class MemoDialog(QtWidgets.QDialog, Ui_MemoDialog):
 
     def closeEvent(self, QCloseEvent):
         self.dialog_closed_s.emit()
+
+
+class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
+    # memo_added_s = QtCore.pyqtSignal()
+    dialog_closed_s = QtCore.pyqtSignal()
+
+    def __init__(self, *params):
+        super(ReportMainWindow, self).__init__()
+        self.setupUi(self)
+        self.cur_period = REPORT_ALL_TP
+        self.cur_cat = REPORT_ALL_CAT
+        self.cur_task, self.cur_task_ind = REPORT_ALL_TASK, 0
+        self.tp_combo_init()
+        self.init_cat_combo()
+        self.init_tasks()
+        self.init_table_view()
+        self.search()
+        self.tp_combo.currentIndexChanged.connect(self.adjust_date_time)
+        self.startDateTime.dateTimeChanged.connect(self.clear_tp_combo)
+        self.stopDateTime.dateTimeChanged.connect(self.clear_tp_combo)
+        self.task_combo.currentIndexChanged.connect(self.set_category)
+        self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
+        self.searchButton.clicked.connect(self.search)
+
+
+    def tp_combo_init(self):
+        self.tp_combo.addItem(REPORT_ALL_TP)
+        self.tp_combo.addItems(TP_LIST)
+        self.tp_combo.setCurrentText(self.cur_period)
+
+    def init_cat_combo(self):
+        self.cat_combo.addItem(REPORT_ALL_CAT)
+        self.categories = retrieve_categories()
+        self.cat_combo.addItems(sorted(self.categories.keys(), key=lambda c: c.lower()))
+
+    def init_tasks(self):
+        self.task_combo.addItem(REPORT_ALL_TASK)
+        self.tasks_with_id, self.tasks_with_cat = get_tasks_with_cat()
+        self.task_combo.addItems(sorted(self.tasks_with_id.keys(), key=lambda c: c.lower()))
+
+    def init_table_view(self):
+        # self.reportView.setC
+        # model = QtWidgets.QSta
+        for i in range(10):
+            for j in range(5):
+                text = str(i) + ', ' + str(j)
+                item = QtWidgets.QTableWidgetItem(text)
+
+
+    def adjust_date_time(self):
+        # self.searchButton.setEnabled(True)
+        self.cur_period = self.tp_combo.currentText()
+        if self.cur_period == REPORT_ALL_TP: return
+        from PyQt5.QtCore import QDateTime
+        start_t, end_t = period_to_timestamp(self.cur_period)
+        self.startDateTime.dateTimeChanged.disconnect(self.clear_tp_combo)
+        self.stopDateTime.dateTimeChanged.disconnect(self.clear_tp_combo)
+        self.startDateTime.setDateTime(QDateTime.fromTime_t(start_t))
+        self.stopDateTime.setDateTime(QDateTime.fromTime_t(end_t))
+        self.startDateTime.dateTimeChanged.connect(self.clear_tp_combo)
+        self.stopDateTime.dateTimeChanged.connect(self.clear_tp_combo)
+
+    def clear_tp_combo(self):
+        # self.searchButton.setEnabled(True)
+        self.tp_combo.currentIndexChanged.disconnect(self.adjust_date_time)
+        self.tp_combo.setCurrentText(REPORT_ALL_TP)
+        self.cur_period = self.tp_combo.currentText()
+        self.tp_combo.currentIndexChanged.connect(self.adjust_date_time)
+
+    def filter_tasks(self):
+        # self.searchButton.setEnabled(True)
+        last_task = self.task_combo.currentText()
+        new_task_list = [REPORT_ALL_TASK]
+        if self.cat_combo.currentText() == REPORT_ALL_CAT:
+            new_task_list.extend(sorted(self.tasks_with_id.keys(), key=lambda c: c.lower()))
+        else:
+            filtered_tasks, cur_cat = [], self.cat_combo.currentText()
+            for task, cat in self.tasks_with_cat.items():
+                if cat == cur_cat:
+                    filtered_tasks.append(task)
+            new_task_list.extend(sorted(filtered_tasks, key=lambda c: c.lower()))
+        self.task_combo.currentIndexChanged.disconnect(self.set_category)
+        self.task_combo.clear()
+        self.task_combo.addItems(new_task_list)
+        cur_task = last_task if last_task in new_task_list else REPORT_ALL_TASK
+        self.task_combo.setCurrentText(cur_task)
+        self.task_combo.currentIndexChanged.connect(self.set_category)
+
+    def set_category(self):
+        # self.searchButton.setEnabled(True)
+        task_new = self.task_combo.currentText()
+        last_cat = self.cat_combo.currentText()
+        if task_new == REPORT_ALL_TASK: return
+        if last_cat == REPORT_ALL_CAT or last_cat != self.tasks_with_cat[task_new]:
+            # self.cat_combo.currentIndexChanged.disconnect(self.filter_tasks)
+            self.cat_combo.setCurrentText(self.tasks_with_cat[task_new])
+            # self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
+
+    def search(self):
+        # self.searchButton.setEnabled(False)
+        columns = ['Cat', 'task', 'time']
+        searchData = [['1', '2', '2222'], ['10', '20', '3333']]
+        self.reportWidget.setColumnCount(len(columns))
+        self.reportWidget.setRowCount(len(searchData))
+        self.reportWidget.setHorizontalHeaderLabels(columns)
+        self.reportWidget.setAlternatingRowColors(True)
+        for i, entry in enumerate(searchData):
+            for j, item in enumerate(entry):
+                val = QTableWidgetItem(searchData[i][j])
+                self.reportWidget.setItem(i, j, val)
+
+
+    def closeEvent(self, QCloseEvent):
+        self.dialog_closed_s.emit()
+
 
 
 if __name__ == "__main__":
