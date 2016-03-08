@@ -21,7 +21,9 @@ TP_THIS_WEEK = 'This Week'
 TP_THIS_MONTH = 'This Month'
 TP_LAST_7 = 'Last 7 Days'
 TP_LAST_30 = 'Last 30 Days'
-TP_LIST = [TP_TODAY, TP_YESTERDAY, TP_THIS_WEEK, TP_LAST_7, TP_THIS_MONTH, TP_LAST_30]
+TP_All_TIME = 'All Time'
+all_time_start = 0
+TP_LIST = [TP_TODAY, TP_YESTERDAY, TP_THIS_WEEK, TP_LAST_7, TP_THIS_MONTH, TP_LAST_30, TP_All_TIME]
 TP_DEF = TP_TODAY
 LABEL_START, LABEL_STOP = "Start", "Stop"
 TU_SECOND = 1
@@ -52,6 +54,9 @@ def period_to_timestamp(period = TP_DEF):
         end_t = datetime.now().timestamp()
     elif period == TP_LAST_30:
         start_t = datetime.combine(date.today() - timedelta(days=30), datetime.min.time()).timestamp()
+        end_t = datetime.now().timestamp()
+    elif period == TP_All_TIME:
+        start_t = all_time_start
         end_t = datetime.now().timestamp()
     else:
         # TODO SHOW ERROR
@@ -87,6 +92,8 @@ class TtForm(QtWidgets.QMainWindow):
         self.cur_dialog = None
         prepare_db()
         self.saved_states = retrieve_saved_state()
+        all_time_start = float(self.saved_states.get('all_time_start', '0'))
+        # TODO correct it when manually added/edited time reports
         self.task_combo_init()
         self.tp_combo_init()
         self.timer = QtCore.QTimer()
