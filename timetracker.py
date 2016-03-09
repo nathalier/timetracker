@@ -218,29 +218,26 @@ class TtForm(QtWidgets.QMainWindow):
 
 
     def open_dialog(self, dial_name, dial_type):
-        self.cur_dialog_name = dial_name
-        constructor = globals()[dial_name]
-        dialog = constructor((self.cur_task, self.all_tasks))
-        self.cur_dialog = dialog
         self.last_ontop_val = self.ui.actionLayer.isChecked()
         if self.last_ontop_val:
             self.toggle_ontop(False)
         self.ui.menubar.setEnabled(False)
+
+        self.cur_dialog_name = dial_name
+        constructor = globals()[dial_name]
         if dial_name == 'AddTaskDialog':
-            self.cur_dialog.task_added_s.connect(self.update_task_combo)
+            dialog = constructor()
+            dialog.task_added_s.connect(self.update_task_combo)
         elif dial_name == 'MemoDialog':
-            self.cur_dialog.memo_added_s.connect(self.show_last_memo)
+            dialog = constructor(cur_task=self.cur_task, all_tasks=self.all_tasks)
+            dialog.memo_added_s.connect(self.show_last_memo)
         elif dial_name == 'ReportMainWindow':
-            dialog.cur_period = self.cur_period
-            dialog.tp_combo.setCurrentText(dialog.cur_period)
+            cur_task = None
             if dial_type == TASK_REPORT:
                 ddd = self.cur_task.find('::')
-                dialog.cur_cat = self.cur_task[:ddd]
-                dialog.cat_combo.setCurrentText(dialog.cur_cat)
-                dialog.cur_task = self.cur_task[ddd + 2:]
-                dialog.task_combo.setCurrentText(dialog.cur_task)
-                dialog.search()
-            # dialog.searchButton.setEnabled(False)
+                cur_task = self.cur_task[ddd + 2:]
+            dialog = constructor(cur_period=self.cur_period, cur_task=cur_task)
+        self.cur_dialog = dialog
         self.cur_dialog.dialog_closed_s.connect(self.dialog_closed)
         dialog.show()
         # dialog.exec()
@@ -268,7 +265,7 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
     task_added_s = QtCore.pyqtSignal()
     dialog_closed_s = QtCore.pyqtSignal()
 
-    def __init__(self, *params):
+    def __init__(self, **params):
         super(AddTaskDialog, self).__init__()
         self.setupUi(self)
         self.setWindowTitle('Add New Task')
@@ -348,10 +345,10 @@ class MemoDialog(QtWidgets.QDialog, Ui_MemoDialog):
     memo_added_s = QtCore.pyqtSignal()
     dialog_closed_s = QtCore.pyqtSignal()
 
-    def __init__(self,  tasks): # cur_task, all_tasks):
+    def __init__(self,  **params):
         super(MemoDialog, self).__init__()
         self.setupUi(self)
-        self.cur_task, self.all_tasks = tasks[0], tasks[1]
+        self.cur_task, self.all_tasks = params['cur_task'], params['all_tasks']
         self.memoEdit.setText('')
         self.init_task_combo()
         self.saveButton.clicked.connect(self.add_btn_clicked)
@@ -387,15 +384,16 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
     # memo_added_s = QtCore.pyqtSignal()
     dialog_closed_s = QtCore.pyqtSignal()
 
-    def __init__(self, *params):
+    def __init__(self, **params):
         super(ReportMainWindow, self).__init__()
         self.setupUi(self)
-        self.cur_period = REPORT_CUSTOM_TP
-        self.cur_cat = REPORT_ALL_CAT
-        self.cur_task, self.cur_task_ind = REPORT_ALL_TASK, 0
+        self.tasks_with_id, self.tasks_with_cat = get_tasks_with_cat()
+        self.cur_period = params['cur_period'] if 'cur_period' in params and params['cur_period'] else REPORT_CUSTOM_TP
+        task_to_set = params['cur_task'] if 'cur_task' in params and params['cur_task'] else REPORT_ALL_TASK
+        self.cur_cat = self.tasks_with_cat[task_to_set] if task_to_set != REPORT_ALL_TASK else REPORT_ALL_CAT
+        self.task_combo_init()
         self.tp_combo_init()
-        self.init_cat_combo()
-        self.init_tasks()
+        self.cat_combo_init()
         self.sum_flag = False
         self.tp_combo.currentIndexChanged.connect(self.adjust_date_time)
         self.startDateTime.dateTimeChanged.connect(self.clear_tp_combo)
@@ -403,21 +401,23 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
         self.task_combo.currentIndexChanged.connect(self.set_category)
         self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
         self.searchButton.clicked.connect(self.search)
+        self.tp_combo.setCurrentText(self.cur_period)
+        self.cat_combo.setCurrentText(self.cur_cat)
+        self.task_combo.setCurrentText(task_to_set)
+        self.search()
 
     def tp_combo_init(self):
         self.tp_combo.addItem(REPORT_CUSTOM_TP)
         self.tp_combo.addItems(TP_LIST)
-        self.tp_combo.setCurrentText(self.cur_period)
 
-    def init_cat_combo(self):
+    def cat_combo_init(self):
         self.cat_combo.addItem(REPORT_ALL_CAT)
         self.cat_combo.addItem(NULL_CAT)
         self.categories = retrieve_categories()
         self.cat_combo.addItems(sorted(self.categories.keys(), key=lambda c: c.lower()))
 
-    def init_tasks(self):
+    def task_combo_init(self):
         self.task_combo.addItem(REPORT_ALL_TASK)
-        self.tasks_with_id, self.tasks_with_cat = get_tasks_with_cat()
         self.task_combo.addItems(sorted(self.tasks_with_id.keys(), key=lambda c: c.lower()))
 
     def adjust_date_time(self):
@@ -463,12 +463,13 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
         self.searchButton.setEnabled(True)
         self.cur_task = self.task_combo.currentText()
         self.cur_task_ind = 0 if self.cur_task == REPORT_ALL_TASK else self.tasks_with_id[self.cur_task]
-        if self.cur_task == REPORT_ALL_TASK: return
-        if self.cur_cat == REPORT_ALL_CAT:  # or self.cur_cat != self.tasks_with_cat[self.cur_task]:
-            self.cur_cat = self.tasks_with_cat[self.cur_task]
-            self.cat_combo.currentIndexChanged.disconnect(self.filter_tasks)
-            self.cat_combo.setCurrentText(self.cur_cat)
-            self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
+        if self.cur_task == REPORT_ALL_TASK:
+            return
+        # if self.cur_cat == REPORT_ALL_CAT or self.cur_cat != self.tasks_with_cat[self.cur_task]:
+        self.cur_cat = self.tasks_with_cat[self.cur_task]
+        self.cat_combo.currentIndexChanged.disconnect(self.filter_tasks)
+        self.cat_combo.setCurrentText(self.cur_cat)
+        self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
 
     def search(self):
         self.searchButton.setEnabled(False)
