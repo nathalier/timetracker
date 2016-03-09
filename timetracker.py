@@ -390,17 +390,25 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
         self.tasks_with_id, self.tasks_with_cat = get_tasks_with_cat()
         self.cur_period = params['cur_period'] if 'cur_period' in params and params['cur_period'] else REPORT_CUSTOM_TP
         task_to_set = params['cur_task'] if 'cur_task' in params and params['cur_task'] else REPORT_ALL_TASK
+        self.cur_task, self.cur_task_ind = task_to_set, 0 if task_to_set == REPORT_ALL_TASK else self.tasks_with_id[task_to_set]
         self.cur_cat = self.tasks_with_cat[task_to_set] if task_to_set != REPORT_ALL_TASK else REPORT_ALL_CAT
         self.task_combo_init()
         self.tp_combo_init()
         self.cat_combo_init()
-        self.sum_flag = False
+        self.detailed_flag = False
+        self.sumDetButton.setText('Get Detailed')
+        self.cat_only_flag = False
+        self.reportByCatCheckBox.setChecked(False)
+
         self.tp_combo.currentIndexChanged.connect(self.adjust_date_time)
         self.startDateTime.dateTimeChanged.connect(self.clear_tp_combo)
         self.stopDateTime.dateTimeChanged.connect(self.clear_tp_combo)
         self.task_combo.currentIndexChanged.connect(self.set_category)
         self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
         self.searchButton.clicked.connect(self.search)
+        self.sumDetButton.clicked.connect(self.sum_det_toggle)
+        self.reportByCatCheckBox.stateChanged.connect(self.cat_only_toggle)
+
         self.tp_combo.setCurrentText(self.cur_period)
         self.cat_combo.setCurrentText(self.cur_cat)
         self.task_combo.setCurrentText(task_to_set)
@@ -471,30 +479,52 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
         self.cat_combo.setCurrentText(self.cur_cat)
         self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
 
+    def sum_det_toggle(self):
+        self.detailed_flag = not self.detailed_flag
+        new_btn_name = 'Get Summary' if self.detailed_flag else 'Get Detailed'
+        self.sumDetButton.setText(new_btn_name)
+        self.search()
+
+    def cat_only_toggle(self):
+        self.searchButton.setEnabled(True)
+        self.cat_only_flag = self.reportByCatCheckBox.isChecked()
+        if self.cat_only_flag:
+            self.task_combo.setCurrentText(REPORT_ALL_TASK)
+            self.task_combo.setEnabled(False)
+            # self.withSubTaskCheckBox.setEnabled(False)
+        else:
+            self.task_combo.setEnabled(True)
+            # self.withSubTaskCheckBox.setEnabled(True)
+
     def search(self):
         self.searchButton.setEnabled(False)
         params = self.construct_search_params()
-        columns = ['Cat', 'task', 'time']
-        searchData = [['1', '2', '2222'], ['10', '20', '3333']]
+        columns, data = select_time_report(*params)
         self.reportWidget.setColumnCount(len(columns))
-        self.reportWidget.setRowCount(len(searchData))
+        self.reportWidget.setRowCount(len(data))
         self.reportWidget.setHorizontalHeaderLabels(columns)
         self.reportWidget.setAlternatingRowColors(True)
-        for i, entry in enumerate(searchData):
+        if len(columns) > 3:
+            self.reportWidget.setColumnWidth(3, 120)
+            self.reportWidget.setColumnWidth(2, 120)
+        for i, entry in enumerate(data):
             for j, item in enumerate(entry):
-                val = QTableWidgetItem(searchData[i][j])
+                val = QTableWidgetItem(data[i][j])
                 self.reportWidget.setItem(i, j, val)
 
     def construct_search_params(self):
         time_start = self.startDateTime.dateTime().toMSecsSinceEpoch() / 1000
         time_stop = self.stopDateTime.dateTime().toMSecsSinceEpoch() / 1000
-        # if time_stop < time_start:
-        # TODO show error
+        if time_stop < time_start:
+            time_stop = time_start
+            self.stopDateTime.setDateTime(self.startDateTime.dateTime())
+            # TODO show error
         cur_cat = None if self.cur_cat == REPORT_ALL_CAT else self.cur_cat
         cur_task = None if self.cur_task == REPORT_ALL_TASK else self.cur_task
-        flag_with_subtasks = True if self.withSubTaskCheckBox.isChecked() else False
-        flag_sum_time = self.sum_flag
-        return (time_start, time_stop, cur_cat, cur_task, flag_with_subtasks, flag_sum_time)
+        flag_with_subtasks = self.withSubTaskCheckBox.isChecked()
+        flag_detailed = self.detailed_flag
+        flag_cat_only = self.reportByCatCheckBox.isChecked()
+        return (time_start, time_stop, cur_cat, cur_task, flag_with_subtasks, flag_detailed, flag_cat_only)
 
 
     def closeEvent(self, QCloseEvent):

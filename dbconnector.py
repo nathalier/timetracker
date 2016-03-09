@@ -3,6 +3,7 @@ __author__ = 'Nathalie'
 
 import sqlite3
 from os import path
+from timetracker import NULL_CAT
 from contextlib import closing
 
 
@@ -145,12 +146,14 @@ def select_time(task_id, start_t, end_t):
     res = conn.execute('''select total_time from time_log where task_id = ? and start_time >= ? and start_time <= ?;''',
                 (task_id, start_t, end_t)).fetchall()
     res_list = [x[0] for x in res]
+    conn.close()
     return sum(res_list)
 
 
 def select_last_memo(task_id):
     conn = sqlite3.connect('ttdb.sqlite')
     res = conn.execute('''select memo, max(time) from memo where task_id = ?;''', (task_id, )).fetchone()
+    conn.close()
     return res
 
 
@@ -186,3 +189,154 @@ def add_memo(memo_text, time, task_id=None):
         print(e)  # TODO show error message
     conn.close()
     return success
+
+def select_time_report(tp_start, tp_stop, cat_name, task_name,
+                       flag_with_subtasks=False, flag_detailed=False, flag_cat_only=False):
+    columns = ['Category', 'Task', 'Start', 'Stop', 'Spent Time', 'Manually']
+    if flag_cat_only:
+        columns.remove('Task')
+    if not flag_detailed:
+        columns.remove('Start')
+        columns.remove('Stop')
+        columns.remove('Manually')
+    conn = sqlite3.connect('ttdb.sqlite')
+
+    if flag_cat_only:
+        if cat_name:
+            if flag_detailed:
+                res = conn.execute('''select c.name,
+                                  datetime(tl.start_time, 'unixepoch') sorting, datetime(tl.stop_time, 'unixepoch'),
+                                  time(tl.total_time, 'unixepoch'), tl.offline_logged
+                                  from category c, task t, time_log tl
+                                  where t.id == tl.task_id
+                                  and t.category_id = c.id and c.name = ?
+                                  and tl.start_time >= ? and tl.start_time < ?
+                                  ORDER BY sorting;''', (cat_name, tp_start, tp_stop)).fetchall()
+            else:
+                res = conn.execute('''select c.name,
+                                      time(sum(tl.total_time), 'unixepoch') sorting
+                                      from category c, task t, time_log tl
+                                      where t.id == tl.task_id
+                                      and t.category_id = c.id and c.name = ?
+                                      and tl.start_time >= ? and tl.start_time < ?
+                                      ORDER BY sorting;''', (cat_name, tp_start, tp_stop)).fetchall()
+        else:
+            if cat_name == NULL_CAT:
+                if flag_detailed:
+                    res = conn.execute('''select '',
+                                      datetime(tl.start_time, 'unixepoch') sorting, datetime(tl.stop_time, 'unixepoch'),
+                                      time(tl.total_time, 'unixepoch'), tl.offline_logged
+                                      from task t, time_log tl
+                                      where t.category_id is NULL and t.id == tl.task_id
+                                      and tl.start_time >= ? and tl.start_time < ?
+                                      ORDER BY sorting;''', (tp_start, tp_stop)).fetchall()
+                else:
+                    res = conn.execute('''select '',
+                                      time(sum(tl.total_time), 'unixepoch') sorting
+                                      from task t, time_log tl
+                                      where t.category_id is NULL and t.id == tl.task_id
+                                      and tl.start_time >= ? and tl.start_time < ?
+                                      ORDER BY sorting;''', (tp_start, tp_stop)).fetchall()
+            else:
+                if flag_detailed:
+                    res = conn.execute('''select c.name,
+                                  datetime(tl.start_time, 'unixepoch') sorting, datetime(tl.stop_time, 'unixepoch'),
+                                  time(tl.total_time, 'unixepoch'), tl.offline_logged
+                                  from time_log tl
+                                  left outer join task t on tl.task_id = t.id
+                                  left outer join category c on c.id = t.category_id
+                                  where tl.start_time >= ? and tl.start_time < ?
+                                  ORDER BY sorting;''', (tp_start, tp_stop)).fetchall()
+                else:
+                    res = conn.execute('''select c.name grouping1,
+                                  time(sum(tl.total_time), 'unixepoch') sorting
+                                  from time_log tl
+                                  left outer join task t on tl.task_id = t.id
+                                  left outer join category c on c.id = t.category_id
+                                  where tl.start_time >= ? and tl.start_time < ?
+                                  GROUP BY grouping1
+                                  ORDER BY sorting DESC;''', (tp_start, tp_stop)).fetchall()
+    else:
+        if task_name:
+            if flag_with_subtasks:
+                pass
+            else:
+                # TODO move to timetracker.py
+                start_pos = task_name.rfind('/') + 1
+                trunc_task_name = task_name[start_pos:] if task_name.rfind('/') > 0 else task_name
+                if flag_detailed:
+                    res = conn.execute('''select c.name, t.name,
+                                  datetime(tl.start_time, 'unixepoch') sorting, datetime(tl.stop_time, 'unixepoch'),
+                                  time(tl.total_time, 'unixepoch'), tl.offline_logged
+                                  from time_log tl
+                                  left outer join task t on tl.task_id = t.id
+                                  left outer join category c on c.id = t.category_id
+                                  where t.name = ? and tl.start_time >= ? and tl.start_time < ?
+                                  ORDER BY sorting;''', (trunc_task_name, tp_start, tp_stop)).fetchall()
+                else:
+                    res = conn.execute('''select c.name, t.name,
+                                  time(sum(tl.total_time), 'unixepoch') sorting
+                                  from time_log tl
+                                  left outer join task t on tl.task_id = t.id
+                                  left outer join category c on c.id = t.category_id
+                                  where t.name = ? and tl.start_time >= ? and tl.start_time < ?
+                                  ORDER BY sorting;''', (trunc_task_name, tp_start, tp_stop)).fetchall()
+        elif cat_name:
+            if flag_detailed:
+                res = conn.execute('''select c.name, t.name,
+                              datetime(tl.start_time, 'unixepoch') sorting, datetime(tl.stop_time, 'unixepoch'),
+                              time(tl.total_time, 'unixepoch'), tl.offline_logged
+                              from time_log tl
+                              left outer join task t on tl.task_id = t.id
+                              left outer join category c on c.id = t.category_id and tl.task_id = t.id
+                              where c.name = ? and tl.start_time >= ? and tl.start_time < ?
+                              ORDER BY sorting;''', (cat_name, tp_start, tp_stop)).fetchall()
+            else:
+                res = conn.execute('''select c.name, t.name grouping1,
+                              time(sum(tl.total_time), 'unixepoch') sorting
+                              from time_log tl
+                              left outer join task t on tl.task_id = t.id
+                              left outer join category c on c.id = t.category_id and tl.task_id = t.id
+                              where c.name = ? and tl.start_time >= ? and tl.start_time < ?
+                              GROUP BY grouping1
+                              ORDER BY sorting DESC;''', (cat_name, tp_start, tp_stop)).fetchall()
+        else:
+            if cat_name == NULL_CAT:
+                if flag_detailed:
+                    res = conn.execute('''select '', t.name
+                                  datetime(tl.start_time, 'unixepoch') sorting, datetime(tl.stop_time, 'unixepoch'),
+                                  time(tl.total_time, 'unixepoch'), tl.offline_logged
+                                  from time_log tl, task t
+                                  where tl.task_id = t.id and t.category_id is NULL
+                                  and tl.start_time >= ? and tl.start_time < ?
+                                  ORDER BY sorting;''', (tp_start, tp_stop)).fetchall()
+                else:
+                    res = conn.execute('''select '', t.name grouping1,
+                                  time(sum(tl.total_time), 'unixepoch') sorting
+                                  from time_log tl, task t
+                                  where tl.task_id = t.id and t.category_id is NULL
+                                  and tl.start_time >= ? and tl.start_time < ?
+                                  GROUP BY grouping1
+                                  ORDER BY sorting DESC;''', (tp_start, tp_stop)).fetchall()
+            else:
+                if flag_detailed:
+                    res = conn.execute('''select c.name, t.name,
+                                      datetime(tl.start_time, 'unixepoch') sorting, datetime(tl.stop_time, 'unixepoch'),
+                                      time(tl.total_time, 'unixepoch'), tl.offline_logged
+                                      from time_log tl
+                                      left outer join task t on tl.task_id = t.id
+                                      left outer join category c on c.id = t.category_id and tl.task_id = t.id
+                                      where tl.start_time >= ? and tl.start_time < ?
+                                      ORDER BY sorting;''', (tp_start, tp_stop)).fetchall()
+                else:
+                    res = conn.execute('''select c.name sorting1, t.name grouping1,
+                                  time(sum(tl.total_time), 'unixepoch') sorting2
+                                  from time_log tl
+                                  left outer join task t on tl.task_id = t.id
+                                  left outer join category c on c.id = t.category_id and tl.task_id = t.id
+                                  where tl.start_time >= ? and tl.start_time < ?
+                                  GROUP BY grouping1
+                                  ORDER BY sorting1, sorting2 DESC;''', (tp_start, tp_stop)).fetchall()
+    # TODO SHOW msg if error
+    conn.close()
+    return columns, res

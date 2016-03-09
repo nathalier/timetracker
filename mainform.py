@@ -178,29 +178,22 @@ class Ui_MainWindow(object):
         self.actionDay.setText(_translate("MainWindow", "Day"))
         self.actionWeek.setText(_translate("MainWindow", "Week"))
         self.actionMonth.setText(_translate("MainWindow", "Month"))
-        self.actionAddTask.setText(_translate("MainWindow", "Add"))
+        self.actionAddTask.setText(_translate("MainWindow", "Add Task"))
+        self.actionAddTask.setShortcut(_translate("MainWindow", "Ctrl++"))
         self.actionDeleteTask.setText(_translate("MainWindow", "Delete"))
         self.actionModifyTask.setText(_translate("MainWindow", "Modify Task"))
         self.actionTaskReport.setText(_translate("MainWindow", "For Task"))
+        self.actionTaskReport.setShortcut(_translate("MainWindow", "Ctrl+T"))
         self.actionLogTime.setText(_translate("MainWindow", "Log Time"))
         self.actionAddMemo.setText(_translate("MainWindow", "Add Memo"))
         self.actionAddMemo.setShortcut(_translate("MainWindow", "Ctrl+M"))
         self.actionLayer.setText(_translate("MainWindow", "Always on Top"))
         self.actionOpacity.setText(_translate("MainWindow", "Opacity"))
         self.actionPeriodReport.setText(_translate("MainWindow", "For Period"))
+        self.actionPeriodReport.setShortcut(_translate("MainWindow", "Ctrl+P"))
         self.actionEditTime.setText(_translate("MainWindow", "Edit Time"))
         self.actionAddToDo.setText(_translate("MainWindow", "Add ToDo"))
         self.actionImport.setText(_translate("MainWindow", "Import..."))
         self.actionExport.setText(_translate("MainWindow", "Export..."))
         self.actionPreferences.setText(_translate("MainWindow", "Preferences..."))
-
-
-if __name__ == "__main__":
-    import sys
-    app = QtWidgets.QApplication(sys.argv)
-    MainWindow = QtWidgets.QMainWindow()
-    ui = Ui_MainWindow()
-    ui.setupUi(MainWindow)
-    MainWindow.show()
-    sys.exit(app.exec_())
 
