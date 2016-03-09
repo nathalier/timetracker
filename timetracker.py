@@ -33,7 +33,7 @@ TU_HOUR = 60 * TU_MINUTE
 TIMER_TIMEOUT = TU_SECOND * 200 #in ms
 TIME_REPORT, TASK_REPORT = 1, 2
 NULL_CAT, NULL_TASK = '', ''
-REPORT_ALL_TP, REPORT_ALL_CAT, REPORT_ALL_TASK = 'Custom', 'All', 'All'
+REPORT_CUSTOM_TP, REPORT_ALL_CAT, REPORT_ALL_TASK = 'Custom', 'All', 'All'
 
 
 def period_to_timestamp(period = TP_DEF):
@@ -239,6 +239,7 @@ class TtForm(QtWidgets.QMainWindow):
                 dialog.cat_combo.setCurrentText(dialog.cur_cat)
                 dialog.cur_task = self.cur_task[ddd + 2:]
                 dialog.task_combo.setCurrentText(dialog.cur_task)
+                dialog.search()
             # dialog.searchButton.setEnabled(False)
         self.cur_dialog.dialog_closed_s.connect(self.dialog_closed)
         dialog.show()
@@ -389,14 +390,13 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
     def __init__(self, *params):
         super(ReportMainWindow, self).__init__()
         self.setupUi(self)
-        self.cur_period = REPORT_ALL_TP
+        self.cur_period = REPORT_CUSTOM_TP
         self.cur_cat = REPORT_ALL_CAT
         self.cur_task, self.cur_task_ind = REPORT_ALL_TASK, 0
         self.tp_combo_init()
         self.init_cat_combo()
         self.init_tasks()
-        self.init_table_view()
-        self.search()
+        self.sum_flag = False
         self.tp_combo.currentIndexChanged.connect(self.adjust_date_time)
         self.startDateTime.dateTimeChanged.connect(self.clear_tp_combo)
         self.stopDateTime.dateTimeChanged.connect(self.clear_tp_combo)
@@ -404,9 +404,8 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
         self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
         self.searchButton.clicked.connect(self.search)
 
-
     def tp_combo_init(self):
-        self.tp_combo.addItem(REPORT_ALL_TP)
+        self.tp_combo.addItem(REPORT_CUSTOM_TP)
         self.tp_combo.addItems(TP_LIST)
         self.tp_combo.setCurrentText(self.cur_period)
 
@@ -421,19 +420,10 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
         self.tasks_with_id, self.tasks_with_cat = get_tasks_with_cat()
         self.task_combo.addItems(sorted(self.tasks_with_id.keys(), key=lambda c: c.lower()))
 
-    def init_table_view(self):
-        # self.reportView.setC
-        # model = QtWidgets.QSta
-        for i in range(10):
-            for j in range(5):
-                text = str(i) + ', ' + str(j)
-                item = QtWidgets.QTableWidgetItem(text)
-
-
     def adjust_date_time(self):
-        # self.searchButton.setEnabled(True)
+        self.searchButton.setEnabled(True)
         self.cur_period = self.tp_combo.currentText()
-        if self.cur_period == REPORT_ALL_TP: return
+        if self.cur_period == REPORT_CUSTOM_TP: return
         from PyQt5.QtCore import QDateTime
         start_t, end_t = period_to_timestamp(self.cur_period)
         self.startDateTime.dateTimeChanged.disconnect(self.clear_tp_combo)
@@ -444,14 +434,14 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
         self.stopDateTime.dateTimeChanged.connect(self.clear_tp_combo)
 
     def clear_tp_combo(self):
-        # self.searchButton.setEnabled(True)
+        self.searchButton.setEnabled(True)
         self.tp_combo.currentIndexChanged.disconnect(self.adjust_date_time)
-        self.tp_combo.setCurrentText(REPORT_ALL_TP)
+        self.tp_combo.setCurrentText(REPORT_CUSTOM_TP)
         self.cur_period = self.tp_combo.currentText()
         self.tp_combo.currentIndexChanged.connect(self.adjust_date_time)
 
     def filter_tasks(self):
-        # self.searchButton.setEnabled(True)
+        self.searchButton.setEnabled(True)
         self.cur_cat = self.cat_combo.currentText()
         new_task_list = [REPORT_ALL_TASK]
         if self.cat_combo.currentText() == REPORT_ALL_CAT:
@@ -470,7 +460,7 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
         self.task_combo.currentIndexChanged.connect(self.set_category)
 
     def set_category(self):
-        # self.searchButton.setEnabled(True)
+        self.searchButton.setEnabled(True)
         self.cur_task = self.task_combo.currentText()
         self.cur_task_ind = 0 if self.cur_task == REPORT_ALL_TASK else self.tasks_with_id[self.cur_task]
         if self.cur_task == REPORT_ALL_TASK: return
@@ -481,7 +471,8 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
             self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
 
     def search(self):
-        # self.searchButton.setEnabled(False)
+        self.searchButton.setEnabled(False)
+        params = self.construct_search_params()
         columns = ['Cat', 'task', 'time']
         searchData = [['1', '2', '2222'], ['10', '20', '3333']]
         self.reportWidget.setColumnCount(len(columns))
@@ -494,9 +485,15 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
                 self.reportWidget.setItem(i, j, val)
 
     def construct_search_params(self):
-        time_start = self.startDateTime.dateTime().timestamp()
-        time_stop = self.stopDateTime.dateTime().timestamp()
-        # cur_cat =
+        time_start = self.startDateTime.dateTime().toMSecsSinceEpoch() / 1000
+        time_stop = self.stopDateTime.dateTime().toMSecsSinceEpoch() / 1000
+        # if time_stop < time_start:
+        # TODO show error
+        cur_cat = None if self.cur_cat == REPORT_ALL_CAT else self.cur_cat
+        cur_task = None if self.cur_task == REPORT_ALL_TASK else self.cur_task
+        flag_with_subtasks = True if self.withSubTaskCheckBox.isChecked() else False
+        flag_sum_time = self.sum_flag
+        return (time_start, time_stop, cur_cat, cur_task, flag_with_subtasks, flag_sum_time)
 
 
     def closeEvent(self, QCloseEvent):
