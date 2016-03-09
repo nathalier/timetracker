@@ -412,6 +412,7 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
 
     def init_cat_combo(self):
         self.cat_combo.addItem(REPORT_ALL_CAT)
+        self.cat_combo.addItem(NULL_CAT)
         self.categories = retrieve_categories()
         self.cat_combo.addItems(sorted(self.categories.keys(), key=lambda c: c.lower()))
 
@@ -451,32 +452,33 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
 
     def filter_tasks(self):
         # self.searchButton.setEnabled(True)
-        last_task = self.task_combo.currentText()
+        self.cur_cat = self.cat_combo.currentText()
         new_task_list = [REPORT_ALL_TASK]
         if self.cat_combo.currentText() == REPORT_ALL_CAT:
             new_task_list.extend(sorted(self.tasks_with_id.keys(), key=lambda c: c.lower()))
         else:
-            filtered_tasks, cur_cat = [], self.cat_combo.currentText()
+            filtered_tasks = []
             for task, cat in self.tasks_with_cat.items():
-                if cat == cur_cat:
+                if cat == self.cur_cat:
                     filtered_tasks.append(task)
             new_task_list.extend(sorted(filtered_tasks, key=lambda c: c.lower()))
         self.task_combo.currentIndexChanged.disconnect(self.set_category)
         self.task_combo.clear()
         self.task_combo.addItems(new_task_list)
-        cur_task = last_task if last_task in new_task_list else REPORT_ALL_TASK
-        self.task_combo.setCurrentText(cur_task)
+        self.cur_task, self.cur_task_ind = REPORT_ALL_TASK, 0
+        self.task_combo.setCurrentText(self.cur_task)
         self.task_combo.currentIndexChanged.connect(self.set_category)
 
     def set_category(self):
         # self.searchButton.setEnabled(True)
-        task_new = self.task_combo.currentText()
-        last_cat = self.cat_combo.currentText()
-        if task_new == REPORT_ALL_TASK: return
-        if last_cat == REPORT_ALL_CAT or last_cat != self.tasks_with_cat[task_new]:
-            # self.cat_combo.currentIndexChanged.disconnect(self.filter_tasks)
-            self.cat_combo.setCurrentText(self.tasks_with_cat[task_new])
-            # self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
+        self.cur_task = self.task_combo.currentText()
+        self.cur_task_ind = 0 if self.cur_task == REPORT_ALL_TASK else self.tasks_with_id[self.cur_task]
+        if self.cur_task == REPORT_ALL_TASK: return
+        if self.cur_cat == REPORT_ALL_CAT:  # or self.cur_cat != self.tasks_with_cat[self.cur_task]:
+            self.cur_cat = self.tasks_with_cat[self.cur_task]
+            self.cat_combo.currentIndexChanged.disconnect(self.filter_tasks)
+            self.cat_combo.setCurrentText(self.cur_cat)
+            self.cat_combo.currentIndexChanged.connect(self.filter_tasks)
 
     def search(self):
         # self.searchButton.setEnabled(False)
@@ -490,6 +492,11 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
             for j, item in enumerate(entry):
                 val = QTableWidgetItem(searchData[i][j])
                 self.reportWidget.setItem(i, j, val)
+
+    def construct_search_params(self):
+        time_start = self.startDateTime.dateTime().timestamp()
+        time_stop = self.stopDateTime.dateTime().timestamp()
+        # cur_cat =
 
 
     def closeEvent(self, QCloseEvent):
