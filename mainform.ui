@@ -265,7 +265,10 @@
   </action>
   <action name="actionAddTask">
    <property name="text">
-    <string>Add</string>
+    <string>Add Task</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl++</string>
    </property>
   </action>
   <action name="actionDeleteTask">
@@ -281,6 +284,9 @@
   <action name="actionTaskReport">
    <property name="text">
     <string>For Task</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+T</string>
    </property>
   </action>
   <action name="actionLogTime">
@@ -312,6 +318,9 @@
   <action name="actionPeriodReport">
    <property name="text">
     <string>For Period</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
    </property>
   </action>
   <action name="actionEditTime">
