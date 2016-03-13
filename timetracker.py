@@ -173,6 +173,10 @@ class TtForm(QtWidgets.QMainWindow):
         last_task_id = self.cur_task_id
         self.ui.task_combo.clear()
         self.task_combo_init(last_task_id)
+
+    def select_another_task(self):
+        pass
+    # TODO select last entered task
     
     def task_combo_init(self, cur_task_id=-1):
         self.all_tasks = get_tasks()
@@ -228,6 +232,7 @@ class TtForm(QtWidgets.QMainWindow):
         if dial_name == 'AddTaskDialog':
             dialog = constructor()
             dialog.task_added_s.connect(self.update_task_combo)
+            dialog.task_added_s.connect(self.select_another_task)
         elif dial_name == 'MemoDialog':
             dialog = constructor(cur_task=self.cur_task, all_tasks=self.all_tasks)
             dialog.memo_added_s.connect(self.show_last_memo)
@@ -245,6 +250,7 @@ class TtForm(QtWidgets.QMainWindow):
     def dialog_closed(self):
         if self.cur_dialog_name == 'AddTaskDialog':
             self.cur_dialog.task_added_s.disconnect(self.update_task_combo)
+            self.cur_dialog.task_added_s.disconnect(self.select_another_task)
         elif self.cur_dialog_name == 'MemoDialog':
             self.cur_dialog.memo_added_s.disconnect(self.show_last_memo)
         self.cur_dialog.dialog_closed_s.disconnect(self.dialog_closed)
@@ -263,6 +269,7 @@ class TtForm(QtWidgets.QMainWindow):
 
 class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
     task_added_s = QtCore.pyqtSignal()
+    task_to_choose_added_s = QtCore.pyqtSignal()
     dialog_closed_s = QtCore.pyqtSignal()
 
     def __init__(self, **params):
@@ -325,6 +332,7 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
                 self.ptask_combo.clear()
                 self.init_tasks()
                 self.task_added_s.emit()
+                self.filter_ptasks()
                 self.taskNameEdit.setText(NULL_TASK)
             else:
                 pass
@@ -335,6 +343,7 @@ class AddTaskDialog(QtWidgets.QDialog, Ui_TaskDialog):
 
     def add_close_btn_clicked(self):
         self.add_btn_clicked()
+        self.task_to_choose_added_s.emit()
         self.close()
 
     def closeEvent(self, QCloseEvent):
