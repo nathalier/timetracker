@@ -27,7 +27,7 @@ def prepare_db():
             total_time	REAL,
 	        offline_logged	INTEGER);
 
-        CREATE INDEX index_start_time ON time_logs (start_time);
+        CREATE INDEX index_start_time ON time_log (start_time);
 
         CREATE TABLE saved_state (
             var	TEXT UNIQUE,
