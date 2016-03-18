@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QTableWidgetItem
 __author__ = 'Nathalie'
 
 import sys
+import signal
 from PyQt5 import QtCore, QtWidgets
 from datetime import datetime, date, timedelta
 from time import time
@@ -214,12 +215,20 @@ class TtForm(QtWidgets.QMainWindow):
 
 
     def closeEvent(self, event):
+        self.safe_close()
+        # event.accept()
+        sys.exit(0)
+
+    def terminate(self, signum, frame):
+        self.safe_close()
+        sys.exit(0)
+
+    def safe_close(self):
+        if self.cur_dialog:
+            self.dialog_closed()
         if self.task_started:
             self.stop_tracking()
         save_cur_state([('last_task_id', str(self.cur_task_id))])
-        # self.cur_dialog.close()
-        event.accept()
-
 
     def open_dialog(self, dial_name, dial_type):
         self.last_ontop_val = self.ui.actionLayer.isChecked()
@@ -544,5 +553,12 @@ class ReportMainWindow(QtWidgets.QMainWindow, Ui_ReportMainWindow):
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     myapp = TtForm()
+
+    signal.signal(signal.SIGINT, myapp.terminate)
+    signal.signal(signal.SIGTERM, myapp.terminate)
+    timer = QtCore.QTimer()
+    timer.start(500)
+    timer.timeout.connect(lambda: None)
+
     myapp.show()
     sys.exit(app.exec())
