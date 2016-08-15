@@ -3,6 +3,8 @@
 Use python 3 to run timetracker.py
 
 View examples:
-![alt text](C:\UpWork\2016-08-15_1232.png?raw=true "Main Window")
-![alt text](http://screencast.com/t/XExt9A4ZE)
+<p align="center">
+  <img src="C:\UpWork\2016-08-15_1232.png" width="350"/>
+  <img src="C:\UpWork\2016-08-15_1240.png" width="350"/>
+</p>
 ![alt text](http://screencast.com/t/IMgk7rsmJ8)
